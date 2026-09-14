@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/html-vite";
-import { Catalog, DESIGN_SYSTEM, render, type Spec } from "../view.tsx";
+import { View } from "../main.ts";
+
+const { Catalog, DESIGN_SYSTEM, render } = View;
+type Spec = View.Spec;
 
 const meta: Meta = { title: "Kernel/Components" };
 export default meta;

@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/html-vite";
-import { render, type Spec } from "../view.tsx";
+import { View } from "../main.ts";
+
+const { render } = View;
+type Spec = View.Spec;
 
 // The home of /_ds: the kernel shown doing its job, before anyone opens a component. Every block here
 // is the same markup a generated system renders, so what looks right here looks right in the app.

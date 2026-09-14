@@ -8,7 +8,7 @@ HERE=$(cd "$(dirname "$0")/.." && pwd)
 N=${1:-3}
 PORT=3998
 B=localhost:$PORT
-TSX=$HERE/node_modules/.bin/tsx
+BUN=${BUN:-bun}
 WORK=${TMPDIR:-/tmp}/acp-h2
 
 mcp_query() {
@@ -20,7 +20,7 @@ for mode in json mcp; do
   for run in $(seq 1 "$N"); do
     dir=$WORK/$mode-$run
     rm -rf "$dir" && mkdir -p "$dir"
-    (cd "$dir" && exec "$TSX" "$HERE/backend.ts" --new --no-open --port $PORT --tools $mode) >"$dir/server.log" 2>&1 &
+    (cd "$dir" && exec "$BUN" "$HERE/main.ts" serve --new --no-open --port $PORT --tools $mode) >"$dir/server.log" 2>&1 &
     pid=$!
     until curl -sf "$B/_system" >/dev/null; do sleep 1; done
     mcp_query "CREATE catalogo_item CONTENT { nome: 'Cadeira Ondina', preco_centavos: 89000, estoque: 3 };
