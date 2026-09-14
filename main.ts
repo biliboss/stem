@@ -48,6 +48,9 @@ export namespace Kernel {
 #working { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none;
   background: oklch(0% 0 0 / 0); backdrop-filter: blur(0); opacity: 0; transition: all .35s ease; }
 body.working #working { background: oklch(21% .012 257 / .22); backdrop-filter: blur(3px); opacity: 1; pointer-events: auto; }
+/* A client's operation is not the owner's gesture: the page stays readable, and a corner says what is being done. */
+body.working.operating #working { background: none; backdrop-filter: none; pointer-events: none; place-items: end start; padding: 1.5rem; }
+body.working.operating #working > span { max-width: 36rem; font-size: .875rem; }
 #working span { animation: breathe 1.6s ease-in-out infinite; }
 @keyframes breathe { 50% { opacity: .45; } }
 form.htmx-request button[type=submit] { pointer-events: none; opacity: .6; }
@@ -92,6 +95,45 @@ body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; 
 #palette li small { margin-left: auto; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); white-space: nowrap; }
 #palette footer { display: flex; gap: 1rem; padding: .5rem 1.25rem; font-size: .8125rem; border-top: 1px solid var(--color-base-300);
   color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+/* Thread: a conversation in a messaging app's own dark world, scoped here so no other screen inherits it. The wallpaper
+   is authored for this kernel — a house, a key and a signed page, the things a broker's chat is about — never a copied asset. */
+body:has(.kernel-thread) { background: #161717; color-scheme: dark; }
+body:has(.kernel-thread) .kernel-page { padding: 0; }
+.kernel-thread { --wa-bg: #161717; --wa-head: #1f2121; --wa-in: #242626; --wa-out: #144d37; --wa-text: #e9edef; --wa-muted: #8696a0;
+  --wa-accent: #21c063; position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr; background: var(--wa-bg); color: var(--wa-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif; font-feature-settings: "tnum" 1; }
+.kernel-thread ::selection { background: color-mix(in srgb, var(--wa-accent) 38%, transparent); color: #fff; }
+.kernel-thread-head { display: flex; align-items: center; gap: .75rem; height: 3.75rem; padding: 0 1rem; background: var(--wa-head);
+  border-bottom: 1px solid rgb(255 255 255 / .06); }
+.kernel-thread-avatar { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; border-radius: 999px; background: #3a4a44;
+  color: #d7f5e4; font-size: .875rem; font-weight: 600; letter-spacing: .02em; }
+.kernel-thread-title { margin: 0; font-size: 1rem; font-weight: 500; line-height: 1.25; }
+.kernel-thread-subtitle { margin: 0; font-size: .8125rem; color: var(--wa-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kernel-thread-body { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #3b3d3d transparent;
+  background-color: var(--wa-bg); background-size: 11rem 11rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='176' fill='none' stroke='%23ffffff' stroke-opacity='.045' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 52 40 34l20 18v22H20z'/%3E%3Cpath d='M34 74V60h12v14'/%3E%3Ccircle cx='128' cy='40' r='9'/%3E%3Cpath d='M137 40h26M155 40v8M163 40v6'/%3E%3Cpath d='M104 104h36a4 4 0 0 1 4 4v44h-40a4 4 0 0 1-4-4v-40a4 4 0 0 1 4-4z'/%3E%3Cpath d='M110 118h24M110 128h24M110 138c6-6 10 4 16-2'/%3E%3Ccircle cx='40' cy='128' r='2'/%3E%3Ccircle cx='76' cy='150' r='2'/%3E%3Ccircle cx='84' cy='18' r='2'/%3E%3C/svg%3E"); }
+.kernel-thread-list { list-style: none; margin: 0 auto; padding: 1.25rem clamp(1rem, 5vw, 4rem) 2rem; display: flex; flex-direction: column; max-width: 64rem; }
+.kernel-bubble { position: relative; max-width: min(36rem, 72%); margin-top: .75rem; padding: .375rem .5rem .4375rem .5625rem; border-radius: .5rem;
+  background: var(--wa-in); box-shadow: 0 1px .5px rgb(11 20 26 / .13); font-size: .9063rem; line-height: 1.32; align-self: flex-start; }
+.kernel-bubble.is-mine { align-self: flex-end; background: var(--wa-out); }
+.kernel-bubble.is-theirs:not(.is-theirs + .is-theirs) { border-top-left-radius: 0; }
+.kernel-bubble.is-mine:not(.is-mine + .is-mine) { border-top-right-radius: 0; }
+.kernel-bubble.is-theirs:not(.is-theirs + .is-theirs)::before, .kernel-bubble.is-mine:not(.is-mine + .is-mine)::before { content: ""; position: absolute;
+  top: 0; width: .5rem; height: .8125rem; background: inherit; }
+.kernel-bubble.is-theirs:not(.is-theirs + .is-theirs)::before { left: -.5rem; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.kernel-bubble.is-mine:not(.is-mine + .is-mine)::before { right: -.5rem; clip-path: polygon(0 0, 100% 0, 0 100%); }
+.is-theirs + .is-theirs, .is-mine + .is-mine { margin-top: .125rem; }
+.is-theirs + .is-theirs .kernel-bubble-author { display: none; }
+.kernel-bubble-author { margin: 0 0 .125rem; font-size: .8125rem; font-weight: 500; color: #06cf9c; }
+.kernel-bubble-kind { display: flex; align-items: center; gap: .3125rem; margin: 0 0 .1875rem; font-size: .75rem; color: var(--wa-muted); }
+.is-mine .kernel-bubble-kind { color: rgb(233 237 239 / .62); }
+.kernel-bubble-cost { margin-left: auto; padding-left: .75rem; color: var(--wa-accent); font-variant-numeric: tabular-nums; }
+.kernel-bubble-audio { display: block; width: min(18rem, 60vw); height: 2.25rem; margin: .125rem 0 .375rem; color-scheme: dark; }
+.kernel-bubble-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.kernel-bubble-text:empty { display: none; }
+.kernel-bubble-time { float: right; position: relative; top: .3125rem; margin-left: .75rem; font-size: .6875rem; line-height: 1; color: var(--wa-muted); }
+.is-mine .kernel-bubble-time { color: rgb(233 237 239 / .6); }
+@media (max-width: 40rem) { .kernel-bubble { max-width: 86%; } }
 .kernel-muted { color: color-mix(in oklch, var(--color-base-content) 62%, transparent); }
 .kernel-meta { margin-left: auto; padding-left: 1rem; white-space: nowrap; font-size: .875rem;
   color: color-mix(in oklch, var(--color-base-content) 55%, transparent); font-variant-numeric: tabular-nums; }
@@ -390,6 +432,8 @@ function lightbox(img) {
 }
 
 export async function mount(root = document) {
+  // A conversation opens where it is going: the latest message.
+  for (const t of root.querySelectorAll("[data-thread]")) t.scrollTop = t.scrollHeight;
   for (const el of root.querySelectorAll("[data-mermaid]:not([data-rendered])")) {
     el.dataset.rendered = "1";
     const source = el.textContent;
@@ -596,6 +640,34 @@ export namespace View {
               h("code", null, escape(String(p.code ?? "")))))) as Render,
       Markdown: ((p) => h("div", { class: "kernel-prose", "data-markdown": true }, escape(String(p.text ?? "")))) as Render,
       Row: ((_p, c) => h("li", { class: "flex flex-row items-center gap-4 py-3 border-b border-base-300" }, c)) as Render,
+      /** A conversation drawn the way a messaging app draws it: who, on top, and a column of bubbles that opens at the latest. */
+      Thread: ((p, c) => h("section", { class: "kernel-thread" },
+          h("header", { class: "kernel-thread-head" },
+              h("span", { class: "kernel-thread-avatar", "aria-hidden": "true" },
+                  escape(String(p.title ?? "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase())),
+              h("div", { class: "min-w-0" },
+                  h("h1", { class: "kernel-thread-title" }, escape(String(p.title ?? ""))),
+                  p.subtitle && h("p", { class: "kernel-thread-subtitle" }, escape(String(p.subtitle))))),
+          h("div", { class: "kernel-thread-body", "data-thread": true },
+              h("ol", { class: "kernel-thread-list" }, c)))) as Render,
+      /** One message. mine sits on the right; a run from the same side keeps one tail and one author line. */
+      Bubble: ((p) => {
+        const kind = p.kind === "audio" || p.kind === "media" ? String(p.kind) : "";
+        const text = String(p.text ?? "").trim();
+        return h("li", { class: `kernel-bubble ${p.mine ? "is-mine" : "is-theirs"}` },
+            !p.mine && p.author && h("p", { class: "kernel-bubble-author" }, escape(String(p.author))),
+            kind === "audio" && p.audio && h("audio", { class: "kernel-bubble-audio", controls: true, preload: "none", src: String(p.audio) }),
+            kind === "audio" && h("p", { class: "kernel-bubble-kind" }, Icon.mic, text ? "transcrição" : "áudio sem transcrição",
+                p.cost != null && p.cost !== "" && h("span", { class: "kernel-bubble-cost" }, escape(String(p.cost)))),
+            kind === "media" && !text && h("p", { class: "kernel-bubble-kind" }, Icon.file, escape(String(p.notice || "mídia"))),
+            h("p", { class: "kernel-bubble-text" }, escape(text),
+                h("span", { class: "kernel-bubble-time" }, escape(String(p.time ?? ""))))); }) as Render,
+    };
+
+    /** Drawn icons, one stroke weight, for the few places a glyph carries meaning. */
+    const Icon = {
+      mic: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`,
+      file: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>`,
     };
 
     function ZoomBar() {
@@ -626,6 +698,8 @@ Components and props:
   Mermaid{code,caption} (a diagram, zoomable) Image{src,alt,caption} (click opens full screen, zoomable)
   Code{code,lang} (with copy) Markdown{text} (long prose the owner wrote or asked for)
   Split (app shell: 1st child Sidebar, then content) Sidebar{title} (children: Link/Heading) Link{label,href,active,meta,dot}
+  Thread{title,subtitle} (a conversation, full screen, messaging-app style; children: Bubble, usually one repeated, oldest first)
+  Bubble{text,time,mine,author,kind:"audio"|"media",audio (playable url or data: URI of the original),cost (text, e.g. "US$ 0,0002"),notice}
   Page{title,wide} (wide for app shells) Tag{text,color} (ONE label chip; color = tone name or CSS color; several labels = a repeat over them) Select{name,label,options:[{value,label}],value}
   Checkbox{checked}+action  List{empty}  Row (a list item; usually the repeated child)
 tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any action the page re-renders itself.`;
@@ -716,12 +790,24 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
               h("div", { id: "working" },
                   h("span", { class: "flex items-center gap-3 rounded-box bg-base-100 px-5 py-3 text-base shadow-[0_12px_40px_-12px_oklch(23%_.014_60/.35)]" },
                       h("span", { class: "loading loading-dots loading-sm text-primary" }),
-                      " o agente est\u00E1 trabalhando")),
+                      h("span", { id: "working-what" }, "o agente est\u00E1 trabalhando"))),
               h("script", null, `
           // The server says when an agent works and when the system changed — from this page, another tab or /_mcp.
           const pulse = new EventSource('/_events');
           let dirty = false;
           pulse.addEventListener('working', () => document.body.classList.add('working'));
+          // The standard intent reading: which request, how big, and what the system was taught it means.
+          pulse.addEventListener('operation', (e) => {
+            const d = JSON.parse(e.data);
+            document.body.classList.add('operating');
+            const what = document.getElementById('working-what');
+            if (what) what.textContent = d.method + ' ' + d.path + (d.size ? ' \u00B7 ' + d.size : '') + ' \u2014 ' + d.meaning;
+          });
+          pulse.addEventListener('idle', () => {
+            document.body.classList.remove('operating');
+            const what = document.getElementById('working-what');
+            if (what) what.textContent = 'o agente est\u00E1 trabalhando';
+          });
           // The finished screen does not reload the page: it develops out of the wireframe in a view transition.
           const develop = async () => {
             const html = await fetch(location.href, { headers: { accept: 'text/html' } }).then((r) => r.text());
@@ -1217,6 +1303,8 @@ export namespace Mcp {
     capabilities(): Promise<unknown>;
     query(sql: string): Promise<unknown>;
     teach(scope: string, instruction: string): Promise<void>;
+    /** Every taught scope with its instructions in order; the last one is what the runtime follows. */
+    teachings(): Promise<Memory.Taught[]>;
     sketch(path: string, view: unknown, note: string): Promise<void>;
     design(path: string): Promise<unknown>;
     prefer(p: { scope: string; rule: string }): Promise<unknown>;
@@ -1228,18 +1316,30 @@ export namespace Mcp {
   export const SystemMcp = {
     INSTRUCTIONS: `This server IS the system you operate. Read before you write: system://schema for the
 application tables, system://views and system://view/{path} for screens, system://preferences for what the
-owner accepted before, system://capabilities for what already runs without a model.
+owner accepted before, system://teachings for what each route was taught (the last instruction of a scope is the
+rule), system://capabilities for what already runs without a model.
 Change state with the query tool (application tables only) or the request tool (an HTTP operation through the
-runtime, recorded like any client's). Never try to reach the database another way.`,
+runtime, recorded like any client's). Never try to reach the database another way.
+How to interact, in this order:
+1. Name a route before anyone calls it: teach "METHOD /path" with what it means, the table it writes and the answer.
+   Every open page shows the first sentence of that teaching while the operation runs; an untaught route shows as
+   unknown, so the owner cannot read what you are doing.
+2. Data that comes from outside enters through request (or the client calling the route), never by INSERT in query:
+   an operation is recorded, and the same shape twice crystallizes into a program that runs without a model.
+3. Screens change by intent (interactive: true when the owner is watching) and by feedback on one element. Never
+   call accept: acceptance is the owner's.
+4. One author per definition. Read system://views and the route's behavior before changing it, and do not rename a
+   table or field another agent already taught; say so to the owner instead.`,
 
     async handle(port: SystemPort, req: Request) {
-      const mcp = SystemMcp.build(port);
+      // bun --hot swaps this namespace but keeps the running Memory: a port from before the reload has no teachings.
+      const mcp = SystemMcp.build(port, port.teachings ? await port.teachings() : []);
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
       await mcp.connect(transport);
       return transport.handleRequest(req);
     },
 
-    build(port: SystemPort) {
+    build(port: SystemPort, taught: Memory.Taught[] = []) {
       const mcp = new McpServer({ name: "system", version: "0.1.0" }, { instructions: SystemMcp.INSTRUCTIONS });
       const json = (uri: string, value: unknown) => ({ contents: [{ uri, mimeType: "application/json", text: JSON.stringify(value, null, 2) }] });
 
@@ -1259,6 +1359,13 @@ runtime, recorded like any client's). Never try to reach the database another wa
         async (uri, { path }) => json(uri.href, await port.design(decodeURIComponent(String(path)))));
       mcp.registerResource("preferences", "system://preferences", { description: "Rules compiled from accepted journeys, scoped" },
         async (uri) => json(uri.href, await port.preferences()));
+      // What each route was taught. teach only appends, so the history is the resource and the last line is the rule.
+      mcp.registerResource("teachings", "system://teachings", { description: "Every taught scope ('METHOD /path' or 'SYSTEM '), its instructions oldest first; the last one is what the runtime follows" },
+        async (uri) => json(uri.href, port.teachings ? await port.teachings() : []));
+      mcp.registerResource("teaching", new ResourceTemplate("system://teaching/{scope}", {
+        list: async () => ({ resources: (port.teachings ? await port.teachings() : []).map((t) => ({ uri: `system://teaching/${encodeURIComponent(t.scope)}`, name: t.scope, mimeType: "application/json" })) }),
+      }), { description: "What one scope was taught; scope is URL-encoded, e.g. system://teaching/POST%20%2Fdeals%2F%7Bid%7D%2Ffields" },
+        async (uri, { scope }) => json(uri.href, (port.teachings ? await port.teachings() : []).find((t) => t.scope === decodeURIComponent(String(scope))) ?? null));
       mcp.registerResource("capabilities", "system://capabilities", { description: "Behaviors already compiled: no model runs for these" },
         async (uri) => json(uri.href, await port.capabilities()));
 
@@ -1325,6 +1432,18 @@ runtime, recorded like any client's). Never try to reach the database another wa
         return { content: [{ type: "text", text: "taught" }] };
       });
 
+      // A taught route as a prompt: the owner's meaning of it, ready to hand to an agent that is about to call or change it.
+      if (taught.length) {
+        mcp.registerPrompt("teaching", {
+          description: `What a route of this system was taught. Scopes: ${taught.map((t) => t.scope).join(" · ")}`,
+          argsSchema: { scope: z.string().describe(`One of: ${taught.map((t) => t.scope).join(" · ")}`) },
+        }, ({ scope }) => {
+          const t = taught.find((x) => x.scope === scope);
+          const text = !t ? `Nothing was taught for "${scope}". Taught scopes: ${taught.map((x) => x.scope).join(" · ")}`
+            : `${t.scope} — follow the LAST instruction; the earlier ones are history.\n\n${t.instructions.map((i, n) => `${n + 1}. (${i.at}) ${i.instruction}`).join("\n\n")}`;
+          return { messages: [{ role: "user", content: { type: "text", text } }] };
+        });
+      }
       for (const [name, text] of Object.entries(port.prompts)) {
         mcp.registerPrompt(name, { description: `The ${name} instructions of this system` },
           () => ({ messages: [{ role: "user", content: { type: "text", text } }] }));
@@ -1497,6 +1616,19 @@ export class Memory {
     await this.define("CREATE teaching CONTENT $t", { t: { scope, instruction, created_at: new Date() } });
   }
 
+  /** Every scope, grouped, oldest instruction first. */
+  async taught(): Promise<Memory.Taught[]> {
+    const [rows] = await this.query<[{ scope: string; instruction: string; created_at: unknown }[]]>(
+      "SELECT scope, instruction, created_at FROM teaching ORDER BY scope, created_at");
+    const byScope = new Map<string, Memory.Taught>();
+    for (const r of rows) {
+      const t = byScope.get(r.scope) ?? { scope: r.scope, instructions: [] };
+      t.instructions.push({ instruction: r.instruction, at: String(r.created_at) });
+      byScope.set(r.scope, t);
+    }
+    return [...byScope.values()];
+  }
+
   async teachings(m: Memory.Match) {
     const [rows] = await this.query<[{ instruction: string }[]]>(
       "SELECT instruction, created_at FROM teaching WHERE scope = $scope ORDER BY created_at", { scope: `${m.method} ${m.path}` });
@@ -1526,6 +1658,7 @@ export class Memory {
   async saveView(path: string, spec: View.Spec, origin: unknown) {
     await this.define("CREATE view CONTENT $v", { v: { path, spec, origin, created_at: new Date() } });
     Pulse.drafts.delete(path);
+    Pulse.phases.delete(path);
     Pulse.emit("changed", { path });
   }
 
@@ -1628,6 +1761,7 @@ export class Memory {
       capabilities: () => this.capabilities(),
       query: (sql) => this.app(sql),
       teach: (scope, instruction) => this.teach(scope, instruction),
+      teachings: () => this.taught(),
       prefer: (p) => this.prefer({ confidence: 0.8, evidence: ["mcp"], ...p }, []),
       design: async (path) => ({ phase: Pulse.phases.get(path) ?? null, waiting: Pulse.gates.has(path), draft: Pulse.drafts.get(path)?.spec ?? null }),
       sketch: async (path, view, note) => {
@@ -1651,6 +1785,8 @@ export class Memory {
 
 export namespace Memory {
   export type Match = { method: string; path: string };
+  /** A scope and everything it was taught, oldest first: teach appends, so the last instruction is the rule. */
+  export type Taught = { scope: string; instructions: { instruction: string; at: string }[] };
   export type Behavior = { type: "static_response"; status: number; body: unknown; content_type?: string };
   /** The deterministic version of an operation family: what an <app>.ts will one day declare by hand. */
   export type Program = { route: string; sql: string; status: number; one?: boolean };
@@ -1667,6 +1803,8 @@ export namespace Memory {
 
   /** RecordId and friends stringify as objects; a record id on the wire is "table:id". */
   export function jsonSafe(v: unknown): unknown {
+    // A program whose last statement returns nothing leaves undefined, and JSON.stringify(undefined) is not JSON.
+    if (v === undefined) return null;
     return JSON.parse(JSON.stringify(v, (_k, x) => (x instanceof RecordId ? String(x) : x)));
   }
 }
@@ -1683,12 +1821,16 @@ export const Pulse = (() => {
     gates: new Map<string, (d: Gate) => void>(),
     /** The latest phase event per path: what an MCP client reads to see the same fold the page shows. */
     phases: new Map<string, Record<string, unknown>>(),
+    /** The operation the agent is on, so a page opened mid-run reads it too. */
+    operation: undefined as Record<string, unknown> | undefined,
 
     wait(path: string): Promise<Gate> {
       return new Promise<Gate>((resolve) => pulse.gates.set(path, resolve));
     },
 
-    emit(event: "working" | "idle" | "changed" | "gesture" | "draft" | "phase" | "gate", data: object = {}): void {
+    emit(event: "working" | "idle" | "changed" | "gesture" | "draft" | "phase" | "gate" | "operation", data: object = {}): void {
+      if (event === "operation") pulse.operation = data as Record<string, unknown>;
+      if (event === "idle") pulse.operation = undefined;
       if (event === "phase") { const d = data as Record<string, unknown>; pulse.phases.set(String(d.path), { ...d, waiting: pulse.gates.has(String(d.path)) || Boolean(d.awaiting) }); }
       for (const send of pulse.clients) send(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     },
@@ -1700,7 +1842,11 @@ export const Pulse = (() => {
         start(controller) {
           send = (chunk) => { try { controller.enqueue(encoder.encode(chunk)); } catch { pulse.clients.delete(send); } };
           send(`event: ${pulse.working ? "working" : "idle"}\ndata: {}\n\n`);
+          if (pulse.working && pulse.operation) send(`event: operation\ndata: ${JSON.stringify(pulse.operation)}\n\n`);
           // A page opened mid-design catches up: the last phase of every path, and whether it waits.
+          // A phase outlives its design only by mistake: with no agent working, what is left is stale, and it would
+          // cover the finished screen with "desenhando a tela" on every load.
+          if (!pulse.working && pulse.gates.size === 0) pulse.phases.clear();
           for (const phase of pulse.phases.values()) send(`event: phase\ndata: ${JSON.stringify({ ...phase, awaiting: pulse.gates.has(String(phase.path)) || undefined })}\n\n`);
           pulse.clients.add(send);
         },
@@ -2170,6 +2316,8 @@ export namespace Server {
       try {
         const r = await resolve(op, match, body, headers, url.search);
         await memory.complete(op, r);
+        // A write that landed changes what every open page shows: they develop in place, without a reload.
+        if (match.method !== "GET" && r.status < 400) Pulse.emit("changed", { path: "*" });
         return send(r.status, r.body, r.content_type, { "x-operation": String(op), "x-resolved-by": r.by });
       } catch (e) {
         await memory.fail(op, String(e));
@@ -2314,6 +2462,11 @@ export namespace Server {
       const interpreter = await agent;
       const accept = headers.accept ?? "application/json";
       const teachings = await memory.teachings(match);
+      // What the system believes this request is, shown on every open page while the agent works on it.
+      const size = Object.entries((body ?? {}) as Record<string, unknown>)
+        .filter(([, v]) => Array.isArray(v)).map(([k, v]) => `${(v as unknown[]).length} ${k}`).join(" \u00B7 ");
+      const meaning = teachings.at(-1)?.split(/(?<=[.:])\s/)[0] ?? "rota que ningu\u00E9m ensinou: o agente vai deduzir";
+      Pulse.emit("operation", { method: match.method, path: match.path, size, meaning: meaning.slice(0, 160) });
       const { transcript, ms, answer } = await interpreter.resolve(
         { ...match, accept, query, body, teachings, screens: await memory.contracts() }, (sql) => memory.app(sql));
       await memory.execution(op, interpreter.agent, transcript, ms);
