@@ -92,20 +92,6 @@ body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; 
 .kernel-hint span { margin-left: .375rem; }
 .kernel-blank .kernel-hint + .kernel-hint { margin-top: -.5rem; font-size: .875rem; }
 .kbd { font-family: inherit; min-height: 1.75rem; min-width: 1.75rem; background: var(--color-base-100); }
-#palette { padding: 0; border: 0; background: transparent; width: min(40rem, calc(100vw - 2rem)); margin: 14vh auto auto; }
-#palette::backdrop { background: oklch(21% .012 257 / .22); backdrop-filter: blur(3px); }
-#palette .sheet { background: var(--color-base-100); border-radius: var(--radius-box);
-  box-shadow: 0 24px 60px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300); overflow: hidden; }
-#palette input { width: 100%; border: 0; outline: 0; background: transparent; padding: 1.125rem 1.25rem; font-size: 1.125rem; }
-#palette ul { border-top: 1px solid var(--color-base-300); max-height: 50vh; overflow: auto; padding: .375rem; }
-#palette li { display: flex; align-items: baseline; gap: .75rem; padding: .625rem .875rem; border-radius: var(--radius-field); cursor: pointer; }
-#palette li[aria-selected=true] { background: var(--color-base-200); }
-#palette li b { font-weight: 600; white-space: nowrap; }
-#palette li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
-#palette li small { margin-left: auto; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); white-space: nowrap; }
-#palette footer { display: flex; gap: 1rem; padding: .5rem 1.25rem; font-size: .8125rem; border-top: 1px solid var(--color-base-300);
-  color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
 /* Thread: a conversation in a messaging app's own dark world, scoped here so no other screen inherits it. The wallpaper
    is authored for this kernel — a house, a key and a signed page, the things a broker's chat is about — never a copied asset. */
 body:has(.kernel-thread) { background: #161717; color-scheme: dark; }
@@ -195,8 +181,6 @@ body:has(.kernel-thread) .kernel-page { padding: 0; }
 ::selection { background: oklch(35% .075 258 / .18); }
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 a { text-underline-offset: .2em; }
-body.editing [data-system-id] { outline: 1px dashed oklch(70% .15 250 / .5); outline-offset: 2px; cursor: crosshair; }
-body.editing [data-system-id].target { outline: 2px solid oklch(70% .2 250); }
 
 /* Interaction states, one rule for every tone: hover darkens 8%, pressed 16% and sinks 1px, disabled
    keeps the color at 40% and refuses the pointer. .is-hover / .is-active force a state for the catalog. */
@@ -318,6 +302,10 @@ body.studio.drafted #kernel-narration-text { font-size: .875rem; line-height: 1.
 body.studio.drafted { background-image: radial-gradient(color-mix(in oklch, var(--color-base-content) 12%, transparent) 1px, transparent 1px);
   background-size: 1.25rem 1.25rem; }
 .kernel-wireframe [data-system-id] { outline: 1px dashed color-mix(in oklch, var(--color-base-content) 24%, transparent); outline-offset: 0; }
+/* The blank screen's one instruction: the command that opens the only door. Monospace here is measurement, not costume. */
+.kernel-mcp { margin: .25rem 0 1.25rem; padding: .625rem .875rem; border-radius: var(--radius-box); overflow-x: auto;
+  background: color-mix(in oklch, var(--color-base-content) 5%, transparent); font-size: .8125rem; line-height: 1.5;
+  color: color-mix(in oklch, var(--color-base-content) 78%, transparent); }
 /* THE OUTLINE MOTION (\`o\`, kernel.js): every component in the view draws its box and says its NAME. A screen made
    of components nobody can name is a screen nobody can ask to change — this is what puts the catalog on a real page.
    outline, never border, so no box moves; the label is drawn inside the corner and never takes a click. */
@@ -348,8 +336,9 @@ body.outlined [data-system-type]:hover { outline-color: var(--color-primary); }
 
 /* Interactive: the fold. While a phase waits, the thought is read whole in a centered sheet with a quiet
    scroll, and the answer lives under it. After the sketch, the same fold sits in the corner over the blueprint. */
-.kernel-gate { display: none; gap: .5rem; align-items: center; margin-top: .25rem; pointer-events: auto; }
-body.awaiting .kernel-gate { display: flex; }
+.kernel-gate-note { display: none; margin-top: .5rem; font-size: .8125rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+body.awaiting .kernel-gate-note { display: block; }
 body.awaiting .kernel-narration { pointer-events: auto; }
 .kernel-gate input { flex: 1; min-width: 0; height: 2.5rem; padding: 0 .875rem; border-radius: var(--radius-field); background: var(--color-base-100);
   border: 1px solid var(--color-base-300); font-size: .9375rem; }
@@ -698,13 +687,11 @@ export namespace View {
           c,
           !c && p.empty && h("li", { class: "py-4 kernel-muted" }, escape(p.empty)))) as Render,
       /** Kernel-only: the screen of a system that was never told anything. Not offered to the agent. */
+      /** The screen has no way in: every gesture arrives by MCP, and this is where that is said out loud. */
       Blank: ((p) => h("main", { class: "kernel-blank" },
           h("h1", { class: "kernel-display" }, escape(String(p.title ?? ""))),
-          h("p", { class: "kernel-hint" },
-              h("kbd", { class: "kbd" }, "\u2318"),
-              h("kbd", { class: "kbd" }, "K"),
-              " ",
-              h("span", null, escape(String(p.hint ?? "")))),
+          h("p", { class: "kernel-hint" }, escape(String(p.hint ?? ""))),
+          h("pre", { class: "kernel-mcp" }, h("code", { id: "kernel-mcp-line" }, "claude mcp add --transport http --scope local system <origem>/_mcp")),
           h("p", { class: "kernel-hint" },
               h("kbd", { class: "kbd" }, "g"),
               h("kbd", { class: "kbd" }, "d"),
@@ -888,7 +875,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
           ${Kernel.css}
           ${css ? `[data-theme] { ${css} }` : ""}
         `)),
-          h("body", { "hx-on--after-request": `if(event.detail.successful && event.detail.requestConfig.verb!=='get' && !event.detail.elt.closest('#feedback')) location.reload()` },
+          h("body", { "hx-on--after-request": `if(event.detail.successful && event.detail.requestConfig.verb!=='get') location.reload()` },
               h("div", { id: "kernel-body" }, body),
               h("div", { id: "kernel-studio", class: "kernel-studio", "aria-live": "polite" },
                   h("ol", { class: "kernel-rail" }, ["entender", "desenhar"].map((label, i) => h("li", { "data-step": String(i + 1) },
@@ -897,37 +884,14 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
                   h("figure", { class: "kernel-narration" },
                       h("figcaption", { id: "kernel-narration-phase" }),
                       h("blockquote", { id: "kernel-narration-text" }),
-                      h("form", { id: "kernel-gate", class: "kernel-gate", autocomplete: "off" },
-                          h("input", { id: "kernel-gate-note", name: "note", placeholder: "Ajustar esta fase\u2026 (\u21B5 para refazer)" }),
-                          h("button", { type: "submit", class: "btn btn-primary btn-sm", "data-continue": true },
-                              "Seguir ",
-                              h("kbd", { class: "kernel-kbd" }, "\u2318\u21B5"))))),
-              h("dialog", { id: "palette", "aria-label": "pr\u00F3ximo passo" },
-                  h("div", { class: "sheet" },
-                      h("input", { id: "palette-input", placeholder: bootstrap ? "Diga o que isto deve se tornar…" : "Diga o que mudar, ou escolha uma ferramenta…", autocomplete: "off" }),
-                      h("ul", { id: "palette-list", role: "listbox" }),
-                      h("footer", null,
-                          h("span", null, "\u2191\u2193 escolher"),
-                          h("span", null, "\u21B5 executar"),
-                          h("span", null, "\u2318\u21B5 passo a passo"),
-                          h("span", null, "esc fechar")))),
-              h("dialog", { id: "feedback", class: "modal" },
-                  h("form", { class: "modal-box flex flex-col gap-3", "hx-post": "/_feedback", "hx-swap": "none", "hx-on--before-request": "this.querySelector('button').classList.add('loading')", "hx-on--after-request": "location.reload()" },
-                      h("h3", { class: "font-bold" }, "O que deve mudar?"),
-                      h("code", { class: "text-xs opacity-60", id: "feedback-target" }),
-                      h("input", { type: "hidden", name: "path", value: path }),
-                      h("input", { type: "hidden", name: "target" }),
-                      h("textarea", { class: "textarea textarea-bordered", name: "instruction", rows: "3", required: true, placeholder: "aponte e diga" }),
-                      h("button", { class: "btn btn-primary" }, "aplicar")),
-                  h("form", { method: "dialog", class: "modal-backdrop" },
-                      h("button", null, "fechar"))),
+                      h("p", { class: "kernel-gate-note" }, "responda pelo MCP: gate {path, continue | revise}"))),
               h("script", { type: "module" }, Kernel.js),
               h("div", { id: "working" }),
               h("div", { id: "agent" },
                   h("div", { id: "agent-doing" },
                       h("span", { class: "loading loading-dots loading-sm text-primary" }),
                       h("span", { id: "working-what" }, "o agente est\u00E1 trabalhando")),
-                  bootstrap || path.startsWith("/_") ? "" : h("button", { id: "agent-accept", class: "btn btn-sm btn-ghost", "hx-post": "/_accept", "hx-vals": JSON.stringify({ path }), "hx-confirm": "Esta vers\u00E3o \u00E9 o que voc\u00EA queria?", title: "fecha a jornada e aprende com ela" }, "\u2713 aceitar")),
+                  ),
               h("script", null, `
           // The server says when an agent works and when the system changed — from this page, another tab or /_mcp.
           const pulse = new EventSource('/_events');
@@ -1062,22 +1026,8 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
             });
             document.body.classList.toggle('awaiting', !!p.awaiting);
             if (!p.done) narrate(p.name + '…', p.step === 1 ? '' : undefined);
-            else if (p.awaiting) { narrate('sua vez: ' + p.name, p.text || '(sem texto)', p.name); document.getElementById('kernel-gate-note').focus(); }
+            else if (p.awaiting) narrate('sua vez: ' + p.name, p.text || '(sem texto)', p.name);
             else if (p.text) narrate('', p.text, p.name);
-          });
-          // The fold answers the waiting phase: ⌘↵ (or Seguir) goes on; a note + ↵ redoes the phase with it.
-          const gate = document.getElementById('kernel-gate'), gateNote = document.getElementById('kernel-gate-note');
-          const answer = (decision) => {
-            const note = gateNote.value.trim();
-            if (decision === 'revise' && !note) return;
-            document.body.classList.remove('awaiting'); gateNote.value = '';
-            fetch('/_gate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path: GATE_PATH(), decision, note }) });
-          };
-          const GATE_PATH = () => location.pathname;
-          gate.addEventListener('submit', (e) => { e.preventDefault(); answer(document.activeElement === gateNote && gateNote.value.trim() ? 'revise' : 'continue'); });
-          document.addEventListener('keydown', (e) => {
-            if (!document.body.classList.contains('awaiting')) return;
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); answer('continue'); }
           });
           pulse.addEventListener('gate', (e) => { const g = JSON.parse(e.data); if (samePath(g.path)) document.body.classList.remove('awaiting'); });
           const paintDraft = async (path, note) => {
@@ -1090,16 +1040,6 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
           pulse.addEventListener('draft', (e) => { const d = JSON.parse(e.data); if (samePath(d.path)) paintDraft(d.path, d.note); });
           // A reload in the middle of a design finds the sketch again instead of the empty page behind it.
           paintDraft(location.pathname);
-          // Right click on any addressed element, or ⌘. / Ctrl+. to toggle edit mode and click.
-          const pick = (el) => {
-            const target = el.closest('[data-system-id]'); if (!target) return false;
-            const d = document.getElementById('feedback');
-            d.querySelector('[name=target]').value = target.dataset.systemId;
-            document.getElementById('feedback-target').textContent = target.dataset.systemId;
-            d.showModal(); d.querySelector('textarea').focus(); return true;
-          };
-          document.addEventListener('contextmenu', (e) => { if (e.shiftKey) return; if (pick(e.target)) e.preventDefault(); });
-          document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === '.') document.body.classList.toggle('editing'); });
           // Vim motions, as two-key sequences outside inputs: g d → design system, g h → home. Esc on the
           // design system goes back to where you came from.
           let leader = 0;
@@ -1113,71 +1053,14 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
               if (e.key === 'h' && location.pathname !== '/') location.assign('/');
             }
           });
-          // ⌘K — the one way in. Typing is always an instruction; the list is the tools that act on it.
-          // "/notebooks/{id}" is the same screen as "/notebooks/notebook:x": compare by segment, {name} matches any.
-          const samePath = (p) => { const a = p.split('/'), b = location.pathname.split('/'); return a.length === b.length && a.every((seg, k) => seg.startsWith('{') || seg === b[k]); };
+          // No way in from here: ⌘K, the feedback dialog and edit mode are gone, and every gesture arrives by MCP —
+          // both the ones the owner starts and the ones the ACP agent plays out live on this screen.
+                    const samePath = (p) => { const a = p.split('/'), b = location.pathname.split('/'); return a.length === b.length && a.every((seg, k) => seg.startsWith('{') || seg === b[k]); };
           const BLANK = ${JSON.stringify(bootstrap)};
           const PATH = ${JSON.stringify(path)};
-          const palette = document.getElementById('palette'), input = document.getElementById('palette-input'), list = document.getElementById('palette-list');
-          const post = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-origin': 'palette' }, body: JSON.stringify(body) });
-          const tools = [
-            { title: BLANK ? 'Tornar isto' : 'Refazer esta tela como', hint: 'intent', needsText: true, run: (t, step) => post('/_intent', { interactive: !!step, intent: t, path: PATH }) },
-            ...(BLANK ? [] : [
-              { title: 'Mudar esta tela', hint: 'feedback', needsText: true, run: (t) => post('/_feedback', { path: PATH, target: 'page', instruction: t }) },
-              { title: 'Apontar um elemento', hint: 'modo edição · ⌘.', run: () => document.body.classList.add('editing') },
-              { title: 'Aceitar esta versão', hint: 'aprende com a jornada', run: () => post('/_accept', { path: PATH }) },
-            ]),
-            { title: 'Contornar os componentes', hint: 'o · cada caixa com o nome dela', run: () => document.body.classList.toggle('outlined') },
-            { title: 'Design system', hint: 'g d · nova aba', run: () => window.open('/_ds/', 'design-system') },
-            { title: 'O que o sistema sabe', hint: '/_system', run: () => window.open('/_system', '_blank') },
-          ];
-          let items = [], active = 0;
-          const draw = () => {
-            const text = input.value.trim();
-            items = tools.filter((t) => !t.needsText || text).filter((t) => t.needsText || !text || t.title.toLowerCase().includes(text.toLowerCase()));
-            if (!items.length) items = tools.filter((t) => t.needsText);
-            active = Math.min(active, Math.max(items.length - 1, 0));
-            list.replaceChildren(...items.map((t, i) => {
-              const li = document.createElement('li');
-              li.setAttribute('role', 'option'); li.setAttribute('aria-selected', String(i === active));
-              const b = document.createElement('b'); b.textContent = t.title;
-              const q = document.createElement('span'); q.textContent = t.needsText && text ? '«' + text + '»' : '';
-              const small = document.createElement('small'); small.textContent = t.hint;
-              li.append(b, q, small); li.onclick = () => exec(i); return li;
-            }));
-          };
-          const exec = (i, step = false) => { const t = items[i]; if (!t) return; const text = input.value.trim(); palette.close(); input.value = ''; t.run(text, step); };
-          const open = () => { active = 0; draw(); palette.showModal(); input.focus(); };
-          document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); palette.open ? palette.close() : open(); } });
-          input.addEventListener('input', () => { active = 0; draw(); });
-          input.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') { active = (active + 1) % items.length; draw(); e.preventDefault(); }
-            else if (e.key === 'ArrowUp') { active = (active - 1 + items.length) % items.length; draw(); e.preventDefault(); }
-            else if (e.key === 'Enter') { exec(active, e.metaKey || e.ctrlKey); e.preventDefault(); }
-          });
-          palette.addEventListener('click', (e) => { if (e.target === palette) palette.close(); });
-          // Someone else (the MCP, another tab) made a gesture: play it here, slowly, without re-sending it.
-          const TITLES = { intent: BLANK ? 'Tornar isto' : 'Refazer esta tela como', feedback: 'Mudar esta tela', accept: 'Aceitar esta versão' };
-          const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-          pulse.addEventListener('gesture', async (e) => {
-            const g = JSON.parse(e.data);
-            if (g.path !== PATH || palette.open) return;
-            open(); input.readOnly = true;
-            await wait(350);
-            for (const ch of g.text) { input.value += ch; draw(); await wait(Math.max(12, Math.min(38, 1400 / g.text.length))); }
-            active = Math.max(0, items.findIndex((t) => t.title === TITLES[g.tool])); draw();
-            await wait(650);
-            input.readOnly = false; input.value = ''; palette.close();
-          });
-          document.addEventListener('click', (e) => {
-            if (!document.body.classList.contains('editing') || e.target.closest('#feedback')) return;
-            e.preventDefault(); e.stopPropagation(); pick(e.target);
-          }, true);
-          document.addEventListener('mouseover', (e) => {
-            if (!document.body.classList.contains('editing')) return;
-            document.querySelectorAll('.target').forEach((n) => n.classList.remove('target'));
-            e.target.closest('[data-system-id]')?.classList.add('target');
-          });
+          // The address of the one door, written where the blank screen can read it.
+          const mcpLine = document.getElementById('kernel-mcp-line');
+          if (mcpLine) mcpLine.textContent = 'claude mcp add --transport http --scope local system ' + location.origin + '/_mcp';
         `)))
     );
   }
@@ -1188,7 +1071,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
     title: "em branco",
     root: "blank",
     elements: {
-      blank: { type: "Blank", props: { title: "Em branco.", hint: "para dar o primeiro passo" } },
+      blank: { type: "Blank", props: { title: "Em branco.", hint: "Esta tela n\u00E3o recebe ordens: tudo entra pelo MCP." } },
     },
   };
 

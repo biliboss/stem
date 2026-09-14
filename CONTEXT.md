@@ -57,6 +57,18 @@ qualquer coisa que ele pudesse julgar, e cada uma gastava um turno do agente.
 - A régua do estúdio se dimensiona sozinha (`grid-auto-flow: column`), então mudar o número de fases não deixa coluna vazia.
 - As fases não paradas continuam gravadas por `keep()`, senão o replay não teria em que se apoiar.
 
+## A tela não recebe ordens: o MCP é a única porta
+
+**O ⌘K, o diálogo de feedback, o modo de edição e o `✓ aceitar` saíram da página: todo gesto entra pelo `/_mcp`,
+tanto o que o dono começa quanto o que o agente ACP executa ao vivo na tela.** Duas portas para o mesmo gesto é
+onde as duas divergem; o que sobra na tela é leitura — a dobra, a régua, o rascunho e o dock do agente.
+
+Ficam só dois toques: `g d` abre o design system e `o` contorna as componentes. Nenhum dos dois muda o sistema.
+
+- A tela em branco IMPRIME a linha que abre a porta (`claude mcp add … <origem>/_mcp`), preenchida no cliente com o `location.origin`.
+- A dobra que espera vira instrução, não campo: `gate {path, continue | revise}` pelo MCP.
+- O SSE, o `develop()` e o `paintDraft()` ficam inteiros: é por eles que o agente desenha ao vivo.
+
 ## A resolução, do mais barato ao mais caro
 
 ```
