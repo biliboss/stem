@@ -134,6 +134,19 @@ body:has(.kernel-thread) .kernel-page { padding: 0; }
 .kernel-bubble-time { float: right; position: relative; top: .3125rem; margin-left: .75rem; font-size: .6875rem; line-height: 1; color: var(--wa-muted); }
 .is-mine .kernel-bubble-time { color: rgb(233 237 239 / .6); }
 @media (max-width: 40rem) { .kernel-bubble { max-width: 86%; } }
+.kernel-bubble-doc { display: flex; align-items: center; gap: .5rem; width: min(18rem, 60vw); margin: .125rem 0 .375rem; padding: .5rem .625rem;
+  border-radius: .375rem; background: rgb(0 0 0 / .22); color: inherit; font-size: .8125rem; text-align: left; cursor: zoom-in; }
+.kernel-bubble-doc:hover { background: rgb(0 0 0 / .32); }
+.kernel-bubble-doc:focus-visible { outline: 2px solid #21c063; outline-offset: 2px; }
+.kernel-preview { width: min(56rem, 94vw); height: 92vh; max-width: none; max-height: none; padding: 0; border: 0; border-radius: .75rem;
+  background: #111313; color: #e9edef; overflow: hidden; box-shadow: 0 40px 80px -30px rgb(0 0 0 / .6); }
+.kernel-preview::backdrop { background: rgb(0 0 0 / .62); backdrop-filter: blur(2px); }
+.kernel-preview header { display: flex; align-items: center; gap: .75rem; height: 3rem; padding: 0 .75rem 0 1rem; border-bottom: 1px solid rgb(255 255 255 / .08); font-size: .875rem; }
+.kernel-preview header span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kernel-preview header a, .kernel-preview header button { color: #8696a0; font-size: .8125rem; }
+.kernel-preview .kernel-preview-body { height: calc(92vh - 3rem); display: grid; place-items: center; background: #0b0c0c; }
+.kernel-preview iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+.kernel-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .kernel-chips { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem; margin: .375rem 0 0; padding: .375rem 0 0;
   border-top: 1px solid rgb(255 255 255 / .07); }
 .kernel-chips + .kernel-chips { border-top: 0; padding-top: 0; margin-top: .25rem; }
@@ -471,7 +484,27 @@ function lightbox(img) {
   });
 }
 
+/** A document in a bubble opens over the page: a PDF in the browser's own viewer, a photo whole. */
+function preview(button) {
+  if (button.dataset.previewReady) return;
+  button.dataset.previewReady = "1";
+  button.addEventListener("click", () => {
+    const url = button.dataset.preview, name = button.dataset.previewName || url.split("/").pop();
+    const dialog = document.createElement("dialog");
+    dialog.className = "kernel-preview";
+    const body = url.toLowerCase().split("?")[0].endsWith(".pdf") ? \`<iframe src="\${url}" title="\${name}"></iframe>\` : \`<img src="\${url}" alt="\${name}">\`;
+    dialog.innerHTML = \`<header><span>\${name}</span><a href="\${url}" target="_blank" rel="noopener">abrir em nova aba</a>
+      <button class="btn btn-xs btn-ghost" aria-label="fechar">esc</button></header><div class="kernel-preview-body">\${body}</div>\`;
+    document.body.append(dialog);
+    dialog.querySelector("button").onclick = () => dialog.close();
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+  });
+}
+
 export async function mount(root = document) {
+  root.querySelectorAll("[data-preview]").forEach(preview);
   // A conversation opens where it is going: the latest message.
   for (const t of root.querySelectorAll("[data-thread]")) t.scrollTop = t.scrollHeight;
   for (const el of root.querySelectorAll("[data-mermaid]:not([data-rendered])")) {
@@ -699,7 +732,9 @@ export namespace View {
             kind === "audio" && p.audio && h("audio", { class: "kernel-bubble-audio", controls: true, preload: "none", src: String(p.audio) }),
             kind === "audio" && h("p", { class: "kernel-bubble-kind" }, Icon.mic, text ? "transcrição" : "áudio sem transcrição",
                 p.cost != null && p.cost !== "" && h("span", { class: "kernel-bubble-cost" }, escape(String(p.cost)))),
-            kind === "media" && !text && h("p", { class: "kernel-bubble-kind" }, Icon.file, escape(String(p.notice || "mídia"))),
+            p.document && h("button", { type: "button", class: "kernel-bubble-doc", "data-preview": String(p.document), "data-preview-name": String(p.documentName ?? "") },
+                Icon.file, h("span", { class: "truncate" }, escape(String(p.documentName || "abrir documento")))),
+            kind === "media" && !text && !p.document && h("p", { class: "kernel-bubble-kind" }, Icon.file, escape(String(p.notice || "mídia"))),
             h("p", { class: "kernel-bubble-text" }, escape(text),
                 h("span", { class: "kernel-bubble-time" }, escape(String(p.time ?? "")))),
             chips(p.detected, "is-detected", "detectado") + chips(p.missed, "is-missed", "deveria ter detectado")); }) as Render,
@@ -765,12 +800,28 @@ Components and props:
   Code{code,lang} (with copy) Markdown{text} (long prose the owner wrote or asked for)
   Split (app shell: 1st child Sidebar, then content) Sidebar{title} (children: Link/Heading) Link{label,href,active,meta,dot}
   Thread{title,subtitle} (a conversation, full screen, messaging-app style; children: Bubble, usually one repeated, oldest first)
-  Bubble{text,time,mine,author,kind:"audio"|"media",audio (playable url or data: URI of the original),cost (text, e.g. "US$ 0,0002"),notice,detected:[field],missed:[field]} (detected/missed: field paths shown as chips under the text, green and red)
+  Bubble{text,time,mine,author,kind:"audio"|"media",audio (playable url or data: URI of the original),cost (text, e.g. "US$ 0,0002"),notice,document (a /_media/ path to a PDF or image, opens in a popup),documentName,detected:[field],missed:[field]} (audio and document take /_media/ paths from the media tool, not bytes) (detected/missed: field paths shown as chips under the text, green and red)
   Desk (two panes, full screen: 1st child a Thread, 2nd child an Aside) Aside{title,subtitle} (children: Group) Group{title,meta} (children: Field)
   Field{label,value,expected} (value empty + expected true = a field the conversation said but nobody recorded)
   Page{title,wide} (wide for app shells) Tag{text,color} (ONE label chip; color = tone name or CSS color; several labels = a repeat over them) Select{name,label,options:[{value,label}],value}
   Checkbox{checked}+action  List{empty}  Row (a list item; usually the repeated child)
 tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any action the page re-renders itself.`;
+  }
+
+  /** An edit is a patch on the view that works: elements and queries it names are set (null removes), the rest stays. */
+  export type Patch = { title?: string; root?: string; data?: Record<string, string | null>; elements?: Record<string, Element | null> };
+  export function patch(spec: Spec, p: Patch): Spec {
+    const next: Spec = structuredClone(spec);
+    if (p.title !== undefined) next.title = p.title;
+    if (p.root !== undefined) next.root = p.root;
+    for (const [name, sql] of Object.entries(p.data ?? {})) {
+      next.data ??= {};
+      if (sql === null) delete next.data[name]; else next.data[name] = sql;
+    }
+    for (const [id, el] of Object.entries(p.elements ?? {})) {
+      if (el === null) delete next.elements[id]; else next.elements[id] = el;
+    }
+    return next;
   }
 
   export function render(spec: Spec, data: Data, params: Record<string, string> = {}, draft?: { fresh?: string[] }): string {
@@ -1301,6 +1352,52 @@ export namespace Acp {
  * admin API, so nothing is written to the repo's Caddyfile and no reload happens: the route lives while the process
  * lives, and a `caddy reload` of the Caddyfile drops it.
  */
+/** Files a system shows — a voice note, a PDF, a photo — kept beside its database, never inside a row. */
+export namespace Media {
+  const TYPES: Record<string, string> = { ogg: "audio/ogg", opus: "audio/ogg", mp3: "audio/mpeg", m4a: "audio/mp4", wav: "audio/wav",
+    pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif" };
+
+  export function dir() {
+    const { join } = process.getBuiltinModule("node:path");
+    return join(process.cwd(), ".system", "media");
+  }
+
+  export function mime(name: string) {
+    return TYPES[name.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
+  }
+
+  /** A name is one path segment: no directory, no dot-prefix, so a request can never reach outside the folder. */
+  function safe(name: string) {
+    const clean = name.replace(/[^A-Za-z0-9._-]/g, "_");
+    if (!clean || clean.startsWith(".")) throw new Error(`bad media name: ${name}`);
+    return clean;
+  }
+
+  export async function save(name: string, source: { url?: string; data?: string }) {
+    const fs = process.getBuiltinModule("node:fs"), { join } = process.getBuiltinModule("node:path");
+    const file = safe(name);
+    let bytes: Uint8Array;
+    if (source.data) bytes = Uint8Array.from(Buffer.from(source.data.replace(/^data:[^,]*,/, ""), "base64"));
+    else if (source.url && /^https?:\/\//.test(source.url)) {
+      const res = await fetch(source.url);
+      if (!res.ok) throw new Error(`fetch ${source.url}: ${res.status}`);
+      bytes = new Uint8Array(await res.arrayBuffer());
+    } else if (source.url) bytes = fs.readFileSync(source.url.replace(/^file:\/\//, ""));
+    else throw new Error("media needs url or data");
+    fs.mkdirSync(dir(), { recursive: true });
+    fs.writeFileSync(join(dir(), file), bytes);
+    return { path: `/_media/${file}`, bytes: bytes.length, mime: mime(file) };
+  }
+
+  export function serve(name: string) {
+    const fs = process.getBuiltinModule("node:fs"), { join } = process.getBuiltinModule("node:path");
+    let file: string;
+    try { file = join(dir(), safe(name)); } catch { return new Response("bad name", { status: 400 }); }
+    if (!fs.existsSync(file)) return new Response("not found", { status: 404 });
+    return new Response(fs.readFileSync(file), { headers: { "content-type": mime(file), "cache-control": "private, max-age=31536000, immutable" } });
+  }
+}
+
 export namespace Caddy {
   /** Idempotent: an old route with the same slug is removed first, and the new one goes to the top. */
   export async function publish(slug: string, port: number) {
@@ -1378,6 +1475,8 @@ export namespace Mcp {
     prefer(p: { scope: string; rule: string }): Promise<unknown>;
     /** An HTTP operation through the runtime's own app, in process: recorded like any client's. */
     request(method: string, path: string, body?: object): Promise<Response>;
+    /** Keep a file (an audio, a PDF, a photo) and answer the path the app serves it at. */
+    media(name: string, source: { url?: string; data?: string }): Promise<{ path: string; bytes: number; mime: string }>;
     prompts: Record<string, string>;
   };
 
@@ -1492,6 +1591,13 @@ How to interact, in this order:
         inputSchema: { scope: z.string(), rule: z.string() },
       }, async ({ scope, rule }) => { await port.prefer({ scope, rule }); return { content: [{ type: "text", text: "preferred" }] }; });
 
+      mcp.registerTool("media", {
+        description: "Keep a file the app must show — a voice note, a PDF, a photo — and get the path it is served at (/_media/<name>). Give url (http(s)://, file://, or an absolute path on this machine) or data (base64). Store that path in the row, never the bytes.",
+        inputSchema: { name: z.string(), url: z.string().optional(), data: z.string().optional() },
+      }, async ({ name, url, data }) => {
+        try { return { content: [{ type: "text", text: JSON.stringify(await port.media(name, { url, data })) }] }; }
+        catch (e) { return { isError: true, content: [{ type: "text", text: String(e) }] }; }
+      });
       mcp.registerTool("teach", {
         description: "Record what an operation means, ahead of its use. scope is 'METHOD /path' or 'SYSTEM '.",
         inputSchema: { scope: z.string(), instruction: z.string() },
@@ -1821,6 +1927,7 @@ export class Memory {
   port(request: Mcp.SystemPort["request"], prompts: Record<string, string>): Mcp.SystemPort {
     return {
       request, prompts,
+      media: (name, source) => Media.save(name, source),
       schema: () => this.app("INFO FOR DB"),
       views: () => this.views(),
       view: (path) => this.view(path),
@@ -1833,6 +1940,7 @@ export class Memory {
       prefer: (p) => this.prefer({ confidence: 0.8, evidence: ["mcp"], ...p }, []),
       design: async (path) => ({ phase: Pulse.phases.get(path) ?? null, waiting: Pulse.gates.has(path), draft: Pulse.drafts.get(path)?.spec ?? null }),
       sketch: async (path, view, note) => {
+        if (Pulse.editing.has(path)) return;
         const previous = Pulse.drafts.get(path)?.spec;
         Pulse.drafts.set(path, { spec: view as View.Spec, previous });
         Pulse.emit("draft", { path, note, template: path.includes("{") });
@@ -1889,6 +1997,8 @@ export const Pulse = (() => {
     gates: new Map<string, (d: Gate) => void>(),
     /** The latest phase event per path: what an MCP client reads to see the same fold the page shows. */
     phases: new Map<string, Record<string, unknown>>(),
+    /** Paths under an edit: a sketch there is dropped, because the owner is looking at the working screen. */
+    editing: new Set<string>(),
     /** The operation the agent is on, so a page opened mid-run reads it too. */
     operation: undefined as Record<string, unknown> | undefined,
 
@@ -2077,6 +2187,26 @@ what is not new — an entity or field that already exists and changes gets "(ex
       replay?: { from: number; phases: { step: number; name: string; text: string; view?: View.Spec }[] }) {
     return this.run(`${Interpreter.DESIGN}\n\nTASK ${JSON.stringify(task)}`, execute, true, Interpreter.checkView(execute), phasedPath, interactive, replay) as Promise<{
       transcript: string[]; ms: number; turns: number; tool_calls: number; answer: { view?: View.Spec; tokens?: Record<string, string>; programs?: (Memory.Program & { method: string })[] } }>;
+  }
+
+  static EDIT = `You EDIT a view that already works for its owner. You do not redesign it.
+${View.Catalog.DOC}
+You get the current view, the element the owner pointed at (target, or "page"), and the instruction. Change the least
+that satisfies the instruction and keep everything else exactly: element ids, props, children, data queries, programs.
+Reply with ONLY: {"patch": {"elements": {"<id>": <element> | null}, "data": {"<name>": "<SurrealQL>" | null}, "title"?: str, "root"?: id}}
+- A patch names only what changes: a changed element is written whole under its own id; null removes it; a new element
+  is a new id and its parent is rewritten with the new children list. Everything not named stays as it is.
+- A new data query must run as written (ORDER BY fields in the SELECT; record ids come back as "table:id").
+- If the change adds an action, also return "programs" as in a design task. Never sketch: the owner is looking at the
+  working screen and it must not blank out while you work.
+To inspect state, reply with ONLY {"query": "<SurrealQL>"} and you get the result.`;
+
+  edit(task: { view: View.Spec } & Record<string, unknown>, execute: (sql: string) => Promise<unknown>) {
+    const check = Interpreter.checkView(execute);
+    return this.run(`${Interpreter.EDIT}\n\nTASK ${JSON.stringify(task)}`, execute, true, async (answer) => {
+      if (answer.patch) answer.view = View.patch(task.view, answer.patch as View.Patch);
+      return check(answer);
+    }) as Promise<{ transcript: string[]; ms: number; answer: { view?: View.Spec; tokens?: Record<string, string>; programs?: (Memory.Program & { method: string })[] } }>;
   }
 
   static COMPILE = `You compile a design journey into preferences. You get every version of a view in order,
@@ -2362,6 +2492,7 @@ export namespace Server {
     hono.all("/_ds/*", (c) => storybook(new URL(c.req.url).pathname));
     hono.all("/_design", async () => send(200, View.Shell({ title: "design system", body: View.render(View.DESIGN_SYSTEM.spec, View.DESIGN_SYSTEM.data), path: "/_design", tokens: await memory.tokens() }), HTML));
     hono.all("/_mcp", (c) => Mcp.SystemMcp.handle(port, c.req.raw));
+    hono.get("/_media/:name", (c) => Media.serve(c.req.param("name")));
     // A gesture that did not come from this page's own palette (the MCP, another tab) is replayed on
     // every open page, so whoever watches sees the menu open and the words being typed.
     for (const [route, gesture] of [["/_intent", intent], ["/_feedback", feedback], ["/_accept", accept]] as const) {
@@ -2450,11 +2581,12 @@ export namespace Server {
       const found = await memory.viewFor(path);
       const current = found?.spec ?? View.BOOTSTRAP;
       const viewPath = found?.path ?? path;
-      const { ms, answer } = await (await agent).design(
-        { goal: "The owner pointed at an element and said what should change. Return the whole updated view, or tokens.",
-          path, target, element: current.elements[target], instruction, view: current, tokens: await memory.tokens(),
+      // An edit, not a redesign: the agent answers a patch on the working view, and nothing is sketched from zero.
+      Pulse.editing.add(viewPath);
+      const { ms, answer } = await (await agent).edit(
+        { path, target, element: current.elements[target], instruction, view: current, tokens: await memory.tokens(),
           preferences: await memory.preferences() },
-        (sql) => memory.app(sql));
+        (sql) => memory.app(sql)).finally(() => Pulse.editing.delete(viewPath));
       const origin = { kind: "feedback", target, instruction, ms };
       if (answer.view) await memory.saveView(viewPath, answer.view, origin);
       await memory.adopt(answer.programs, answer.view);
