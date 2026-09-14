@@ -45,24 +45,54 @@ export namespace Html {
  */
 export namespace Kernel {
   export const css = `/* kernel.css — the default world every system is born with. Shell inlines it; Storybook imports it. */
-/* The scrim, and nothing else: it says the page is not the owner's right now. A client's operation never takes it. */
+/* THE SCRIM. While the agent works the page steps back into the dark, and the only light in the room falls on the
+   corner where the work is happening: the glow is anchored to the dock, not sprayed over the page. A client's
+   operation gets the same treatment as the owner's own gesture — with the MCP as the only door, every gesture is his.
+   pointer-events stay none: the page dims, it does not lock, so a link on it is still a link. */
 #working { position: fixed; inset: 0; z-index: 50; pointer-events: none;
-  background: oklch(0% 0 0 / 0); backdrop-filter: blur(0); opacity: 0; transition: all .35s ease; }
-body.working #working { background: oklch(21% .012 257 / .22); backdrop-filter: blur(3px); opacity: 1; pointer-events: auto; }
-body.working.operating #working { background: none; backdrop-filter: none; opacity: 0; pointer-events: none; }
+  background: oklch(0% 0 0 / 0); backdrop-filter: blur(0); opacity: 0; transition: opacity .45s ease, backdrop-filter .45s ease; }
+/* ONE light source. Two radials drew a visible arc across the middle — a seam, not a room. */
+body.working #working { opacity: 1; backdrop-filter: blur(2px) saturate(.6);
+  background:
+    radial-gradient(38rem 30rem at calc(100% - 11rem) calc(100% - 5rem),
+      color-mix(in oklch, var(--color-primary) 38%, transparent) 0%, transparent 70%),
+    oklch(14% .02 257 / .82); }
 /* The agent has ONE place on every screen, the lower right: what it is doing and what it asks of the owner stack in
    the same column. Before this, the operation read at the lower left while ✓ aceitar sat at the lower right, and on a
    page with no view yet that button offered to accept nothing. Above the scrim, so the dock stays sharp over the blur. */
 #agent { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 60; display: grid; justify-items: end; gap: .5rem; pointer-events: none; }
 #agent > * { pointer-events: auto; }
-#agent-doing { display: none; max-width: 32rem; align-items: center; gap: .75rem; font-size: .875rem;
-  border-radius: var(--radius-box); background: var(--color-base-100); color: var(--color-base-content); padding: .625rem .875rem;
+/* Two versions of the same widget: closed it is a pill that fits its sentence, open it is the log. \`a\` switches,
+   and the key is written inside the widget — a motion nobody can see is a shortcut, not a motion. */
+#agent-card { display: none; width: fit-content; max-width: min(34rem, calc(100vw - 3rem)); border-radius: var(--radius-box); overflow: hidden;
+  background: var(--color-base-100); color: var(--color-base-content);
   box-shadow: 0 18px 44px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300); }
-body.working #agent-doing { display: flex; }
-/* The studio narrates on its own; and there is nothing to accept while the screen is still being made. */
-body.studio #agent-doing { display: none; }
-body.working #agent-accept { opacity: 0; pointer-events: none; }
-#agent-doing #working-what { animation: breathe 1.6s ease-in-out infinite; }
+body.working #agent-card { display: block; }
+/* The studio narrates on its own screen; two accounts of the same work is one too many. */
+body.studio #agent-card { display: none; }
+#agent-doing { display: flex; align-items: center; gap: .75rem; padding: .625rem .875rem; font-size: .875rem; }
+#agent-key { margin-left: 1.5rem; display: flex; align-items: center; gap: .375rem; white-space: nowrap; font-size: .75rem;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent); }
+#agent-key .kbd { min-height: 1.25rem; min-width: 1.25rem; font-size: .6875rem; }
+#working-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; animation: breathe 1.6s ease-in-out infinite; }
+/* Every tool the agent calls, as it calls it. Before this the owner watched a breathing pill for minutes with no
+   way to see inside it, and the ACP was reporting each call all along. Newest at the bottom: a log reads down. */
+#agent-tools { display: none; margin: 0; padding: .25rem 0 .375rem; list-style: none; max-height: 13rem; overflow-y: auto;
+  border-top: 1px solid var(--color-base-300);
+  scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--color-base-content) 22%, transparent) transparent; }
+body.agent-detail #agent-tools:not(:empty) { display: block; }
+#agent-tools li { display: grid; grid-template-columns: 2px auto minmax(0, 1fr); align-items: baseline; gap: .625rem;
+  padding: .25rem .875rem; font-size: .8125rem; animation: tool-in .22s cubic-bezier(.16, 1, .3, 1) both; }
+#agent-tools b { font-weight: 600; white-space: nowrap; }
+#agent-tools code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+/* The state is DRAWN — a 2px bar, never a glyph: waiting rests, running breathes, done settles, failed says so. */
+#agent-tools i { align-self: stretch; border-radius: 999px; background: color-mix(in oklch, var(--color-base-content) 18%, transparent); }
+#agent-tools li[data-status=in_progress] i { background: var(--color-primary); animation: breathe 1.2s ease-in-out infinite; }
+#agent-tools li[data-status=completed] i { background: color-mix(in oklch, var(--color-base-content) 38%, transparent); }
+#agent-tools li[data-status=failed] i { background: var(--color-error); }
+#agent-tools li[data-status=failed] b { color: var(--color-error); }
+@keyframes tool-in { from { opacity: 0; transform: translateY(6px); } }
 @keyframes breathe { 50% { opacity: .45; } }
 form.htmx-request button[type=submit] { pointer-events: none; opacity: .6; }
 form.htmx-request button[type=submit]::after { content: " · pensando…"; }
@@ -888,10 +918,12 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
               h("script", { type: "module" }, Kernel.js),
               h("div", { id: "working" }),
               h("div", { id: "agent" },
-                  h("div", { id: "agent-doing" },
-                      h("span", { class: "loading loading-dots loading-sm text-primary" }),
-                      h("span", { id: "working-what" }, "o agente est\u00E1 trabalhando")),
-                  ),
+                  h("div", { id: "agent-card" },
+                      h("div", { id: "agent-doing" },
+                          h("span", { class: "loading loading-dots loading-sm text-primary" }),
+                          h("span", { id: "working-what" }, "o agente est\u00E1 trabalhando"),
+                          h("span", { id: "agent-key" }, h("kbd", { class: "kbd" }, "a"), h("span", { id: "agent-key-what" }, "detalhes"))),
+                      h("ol", { id: "agent-tools", "aria-live": "polite", "aria-label": "chamadas de ferramenta" }))),
               h("script", null, `
           // The server says when an agent works and when the system changed — from this page, another tab or /_mcp.
           const pulse = new EventSource('/_events');
@@ -1058,6 +1090,39 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
                     const samePath = (p) => { const a = p.split('/'), b = location.pathname.split('/'); return a.length === b.length && a.every((seg, k) => seg.startsWith('{') || seg === b[k]); };
           const BLANK = ${JSON.stringify(bootstrap)};
           const PATH = ${JSON.stringify(path)};
+          // One row per tool call, updated in place as the ACP refines its status.
+          const toolList = document.getElementById('agent-tools'), toolRows = new Map();
+          pulse.addEventListener('tool', (e) => {
+            const t = JSON.parse(e.data);
+            let li = t.id ? toolRows.get(t.id) : undefined;
+            if (!li) {
+              li = document.createElement('li');
+              li.append(document.createElement('i'), document.createElement('b'), document.createElement('code'));
+              toolList.append(li);
+              if (t.id) toolRows.set(t.id, li);
+              while (toolList.children.length > 40) toolList.removeChild(toolList.firstChild);
+            }
+            if (t.title) li.querySelector('b').textContent = t.title;
+            if (t.input) li.querySelector('code').textContent = t.input;
+            if (t.status) li.dataset.status = t.status;
+            toolList.scrollTop = toolList.scrollHeight;
+          });
+          // \`a\` outside a field switches the widget between the pill and the log; the choice survives a reload.
+          const agentKeyWhat = document.getElementById('agent-key-what');
+          const agentDetail = (on) => {
+            document.body.classList.toggle('agent-detail', on);
+            agentKeyWhat.textContent = on ? 'resumir' : 'detalhes';
+            localStorage.setItem('kernel-agent-detail', on ? 'on' : 'off');
+          };
+          agentDetail(localStorage.getItem('kernel-agent-detail') === 'on');
+          document.addEventListener('keydown', (e) => {
+            if (e.key !== 'a' || e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input, textarea, select, [contenteditable]')) return;
+            agentDetail(!document.body.classList.contains('agent-detail'));
+          });
+
+          // The dock hides when the work ends, so the list starts clean on the next one.
+          pulse.addEventListener('idle', () => { toolRows.clear(); toolList.replaceChildren(); });
+
           // The address of the one door, written where the blank screen can read it.
           const mcpLine = document.getElementById('kernel-mcp-line');
           if (mcpLine) mcpLine.textContent = 'claude mcp add --transport http --scope local system ' + location.origin + '/_mcp';
@@ -1989,7 +2054,7 @@ export const Pulse = (() => {
       return new Promise<Gate>((resolve) => pulse.gates.set(path, resolve));
     },
 
-    emit(event: "working" | "idle" | "changed" | "gesture" | "draft" | "phase" | "gate" | "operation", data: object = {}): void {
+    emit(event: "working" | "idle" | "changed" | "gesture" | "draft" | "phase" | "gate" | "operation" | "tool", data: object = {}): void {
       if (event === "operation") pulse.operation = data as Record<string, unknown>;
       if (event === "idle") pulse.operation = undefined;
       if (event === "phase") { const d = data as Record<string, unknown>; pulse.phases.set(String(d.path), { ...d, waiting: pulse.gates.has(String(d.path)) || Boolean(d.awaiting) }); }
@@ -2068,6 +2133,19 @@ When this operation is one of a FAMILY (same method, same route shape, different
 - Write exactly what you wrote by hand, with the same fields and defaults, so the screens keep reading it.
 Omit "program" when the answer needs judgement a query cannot make.`;
 
+  /** The first piece of text inside a tool's input, in one line: the SQL, the path, the instruction. */
+  static preview(raw: unknown): string {
+    const seen = new Set<unknown>();
+    const find = (v: unknown): string | undefined => {
+      if (typeof v === "string") return v;
+      if (!v || typeof v !== "object" || seen.has(v)) return undefined;
+      seen.add(v);
+      for (const x of Object.values(v as Record<string, unknown>)) { const hit = find(x); if (hit) return hit; }
+      return undefined;
+    };
+    return (find(raw) ?? "").replace(/\s+/g, " ").trim().slice(0, 160);
+  }
+
   /** How many query round trips one operation may take. */
   static MAX_TURNS = 8;
   /**
@@ -2083,7 +2161,19 @@ Omit "program" when the answer needs judgement a query cannot make.`;
         if (update.sessionUpdate === "agent_message_chunk" && update.content.type === "text" && self) {
           self.#text.set(sessionId, (self.#text.get(sessionId) ?? "") + update.content.text);
         }
-        if (update.sessionUpdate === "tool_call" && self) self.toolCalls++;
+        // Every tool call the agent makes, live on the page. Only the counter survived before, and the owner
+        // watched a breathing pill for minutes with no way to know what was happening inside it.
+        if (update.sessionUpdate === "tool_call" && self) {
+          self.toolCalls++;
+          const u = update as { toolCallId?: string; title?: string; kind?: string; status?: string; rawInput?: unknown };
+          Pulse.emit("tool", { id: u.toolCallId, title: u.title ?? u.kind ?? "tool", kind: u.kind, status: u.status ?? "pending", input: Interpreter.preview(u.rawInput) });
+        }
+        // The input arrives streamed: at "tool_call" time rawInput is still empty, and the refinement carries it.
+        if (update.sessionUpdate === "tool_call_update" && self) {
+          const u = update as { toolCallId?: string; status?: string; title?: string; rawInput?: unknown };
+          const input = Interpreter.preview(u.rawInput);
+          Pulse.emit("tool", { id: u.toolCallId, status: u.status, title: u.title, ...(input ? { input } : {}) });
+        }
         // The ACP agent reports the session's RUNNING TOTAL after each assistant message. Kept per session, so a
         // task's cost is the difference across its own turns; without this nothing in this file knows what work costs.
         if (update.sessionUpdate === "usage_update" && self) {
