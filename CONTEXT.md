@@ -47,11 +47,15 @@ oferecia aceitar o que não existe. O `#working` virou só o véu; o dock fica A
 - O aceitar some enquanto o agente trabalha, e não é desenhado quando a resolução foi `bootstrap` ou `designing` — nos dois a tela está em branco e não há versão para fechar.
 - A régua do estúdio divide o mesmo canto (`bottom: 1.5rem`), porque o aceitar está escondido enquanto ela existe.
 
-## A dobra abre no ESBOÇO
+## Duas fases: entender, e a tela
 
-**`Interpreter.GATE_FROM = 4`: entender, planejar e pensar a UX correm direto, e a primeira coisa que o dono
-julga é um DESENHO.** Ler três telas de prosa antes de qualquer forma é pedágio cobrado de quem pediu uma tela.
-As fases não paradas ainda são gravadas por `keep()`, senão replay a partir do esboço não teria em que se apoiar.
+**`Interpreter.TOTAL = 2` e `GATE_FROM = 1`: o dono lê o que vai existir, corrige ali — o lugar barato de estar
+errado — e o que volta é a tela pronta.** Planejar, pensar a UX e esboçar eram três leituras cobradas antes de
+qualquer coisa que ele pudesse julgar, e cada uma gastava um turno do agente.
+
+- A numeração sai do `TOTAL`, nunca escrita à mão: os prompts diziam "of 5" e teriam mentido no primeiro corte.
+- A régua do estúdio se dimensiona sozinha (`grid-auto-flow: column`), então mudar o número de fases não deixa coluna vazia.
+- As fases não paradas continuam gravadas por `keep()`, senão o replay não teria em que se apoiar.
 
 ## A resolução, do mais barato ao mais caro
 

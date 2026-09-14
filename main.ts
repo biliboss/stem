@@ -268,7 +268,7 @@ body.studio #working { opacity: 0 !important; pointer-events: none !important; }
 /* The rail is the agent's corner too, the lower right: across the top it sat on the screen's own header, and on a dark
    screen its ink vanished. It carries its own surface, so it reads on any theme the view chose. */
 .kernel-rail { position: fixed; right: 1.5rem; bottom: 1.5rem; width: 15rem; margin: 0; list-style: none; display: grid;
-  grid-template-columns: repeat(5, 1fr); gap: .25rem; padding: .625rem .75rem 1.75rem; border-radius: var(--radius-box);
+  grid-auto-flow: column; grid-auto-columns: 1fr; gap: .25rem; padding: .625rem .75rem 1.75rem; border-radius: var(--radius-box);
   background: var(--color-base-100); color: var(--color-base-content);
   box-shadow: 0 18px 44px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300);
   opacity: 0; transform: translateY(.5rem); transition: opacity .4s ease, transform .5s cubic-bezier(.16, 1, .3, 1); }
@@ -891,7 +891,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
           h("body", { "hx-on--after-request": `if(event.detail.successful && event.detail.requestConfig.verb!=='get' && !event.detail.elt.closest('#feedback')) location.reload()` },
               h("div", { id: "kernel-body" }, body),
               h("div", { id: "kernel-studio", class: "kernel-studio", "aria-live": "polite" },
-                  h("ol", { class: "kernel-rail" }, ["entender", "planejar", "pensar a UX", "esboçar", "desenhar"].map((label, i) => h("li", { "data-step": String(i + 1) },
+                  h("ol", { class: "kernel-rail" }, ["entender", "desenhar"].map((label, i) => h("li", { "data-step": String(i + 1) },
                       h("span", { class: "kernel-rail-bar" }),
                       h("span", { class: "kernel-rail-label" }, label)))),
                   h("figure", { class: "kernel-narration" },
@@ -2188,11 +2188,10 @@ Omit "program" when the answer needs judgement a query cannot make.`;
   /** How many query round trips one operation may take. */
   static MAX_TURNS = 8;
   /**
-   * An interactive design waits from this phase on. Understanding, plan and UX run through and stay readable on the
-   * rail, but the first thing the owner is asked about is a DRAWING: a request that deserves a screen starts at the
-   * sketch, because three screens of prose before any shape is a toll on the person who asked for a screen.
+   * An interactive design waits from this phase on. With two steps it is the first: the owner corrects the
+   * understanding, which is the cheap place to be wrong, and what comes back is the finished screen.
    */
-  static GATE_FROM = 4;
+  static GATE_FROM = 1;
 
   static async start(agent: string, mcpUrl?: string) {
     let self: Interpreter | undefined;
@@ -2291,11 +2290,13 @@ from its first click: [{"method": "POST", "route": "/todos/{id}/complete", "sql"
 A drawing says it exists: an entity in the erDiagram IS the table to create, so never write "will create". Mark only
 what is not new — an entity or field that already exists and changes gets "(existente)" or "+ campo" in its name.`;
 
+  /**
+   * Two steps: the owner reads what will exist, and then the screen exists. The plan, the UX note and the mockup
+   * were three readings charged before anything he could judge, and each one spent a turn of the agent as well.
+   */
+  static TOTAL = 2;
   static PHASES = [
-    { name: "entendendo", ask: `PHASE 1 of 5 — understand. Apply every preference scoped "phase:entendendo" to how you write this. ${Interpreter.PHASE_RULE} Do not design yet. Reply ONLY {"text": "<Portuguese: one short first line naming what will exist, then 3-5 '- ' items of at most 8 words each, in spoken language>"}` },
-    { name: "planejando", ask: `PHASE 2 of 5 — plan. Apply every preference scoped "phase:planejando". ${Interpreter.PHASE_RULE} Inspect the state if useful. Reply ONLY {"text": "<Portuguese markdown that fits one screen: sections '## Telas' and '## Ações' with 2-5 '- ' items of at most 10 words each; '## Eventos' with the 3-6 facts that prove the app works, each as '- ' + a PascalCase past-tense name and at most 6 words (e.g. '- TaskCreated: tarefa nova num projeto'); and '## Entidades' holding ONLY a fenced mermaid erDiagram of the entities with their key fields and relations (no prose)>"}` },
-    { name: "pensando a UX", ask: `PHASE 3 of 5 — UX. Apply every preference scoped "phase:pensando a UX". ${Interpreter.PHASE_RULE} Reply ONLY {"text": "<Portuguese markdown that fits one screen: sections '## Hierarquia', '## Ação principal', '## Navegação', '## Vazios', each with 1-3 '- ' items of at most 12 words>"}` },
-    { name: "esboçando", ask: `PHASE 4 of 5 — mockup. Reply ONLY {"text": "<one line>", "view": <the view with its layout, sections and their real elements written with short representative Portuguese text: titles, labels, placeholders, button names, and 2-3 example rows where a list goes, each at the size the real content will have; only what decides the structure: a list row carries its title and at most one secondary element, secondary actions stay out; no data queries, no repeat, no programs>}` },
+    { name: "entendendo", ask: `PHASE 1 of ${Interpreter.TOTAL} — understand. Apply every preference scoped "phase:entendendo" to how you write this. ${Interpreter.PHASE_RULE} Do not design yet. Reply ONLY {"text": "<Portuguese: one short first line naming what will exist, then 3-5 '- ' items of at most 8 words each, in spoken language>"}` },
   ];
 
   design(task: object, execute: (sql: string) => Promise<unknown>, phasedPath?: string, interactive = false,
@@ -2444,7 +2445,7 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
           for (const [k, id] of pending.entries()) {
             const title = String((view.elements[id]?.props as { title?: string } | undefined)?.title ?? id);
             Pulse.emit("phase", { path: phasedPath, name: `desenhando ${title}`, step: 5, total: 5 });
-            const { answer } = await this.turns(session, `PHASE 5 of 5 — section ${k + 1} of ${pending.length}: "${id}" (${title}). ` +
+            const { answer } = await this.turns(session, `PHASE ${Interpreter.TOTAL} of ${Interpreter.TOTAL} — section ${k + 1} of ${pending.length}: "${id}" (${title}). ` +
               `Write this section only. Reply ONLY {"text": "<one line>", "elements": {"${id}": <the element with its children ids>, <every descendant>}, "data": {<queries it reads>}}`, execute);
             const previous = view;
             view = { ...view, data: { ...(view.data ?? {}), ...((answer.data as Record<string, string>) ?? {}) },
@@ -2462,7 +2463,7 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
           return { ...fixed, ms: Date.now() - started };
         }
         Pulse.emit("phase", { path: phasedPath, name: "desenhando a tela", step: 5, total: 5 });
-        const last = await this.turns(session, "PHASE 5 of 5 — the screen. Now reply with the final JSON exactly as the instructions specify (view, programs, views).", execute, check);
+        const last = await this.turns(session, `PHASE ${Interpreter.TOTAL} of ${Interpreter.TOTAL} — the screen. Now reply with the final JSON exactly as the instructions specify (view, programs, views).`, execute, check);
         return { ...last, ms: Date.now() - started };
       }
       finally { if (fresh) await this.#conn.closeSession({ sessionId: session }).catch(() => undefined); }
