@@ -1,0 +1,6 @@
+{"ms": 57396, "turns": 3, "tool_calls": 0, "view": true, "tokens": false, "mode": "json", "run": 1, "seconds": 58, "seeded_seen": 3, "passed": true}
+{"error": "SyntaxError: Unexpected non-whitespace character after JSON at position 522 (line 1 column 523)", "mode": "json", "run": 2, "seconds": 54, "seeded_seen": 0, "passed": false}
+{"ms": 56347, "turns": 3, "tool_calls": 0, "view": true, "tokens": false, "mode": "json", "run": 3, "seconds": 57, "seeded_seen": 3, "passed": true}
+{"ms": 63342, "turns": 1, "tool_calls": 10, "view": true, "tokens": false, "mode": "mcp", "run": 1, "seconds": 64, "seeded_seen": 3, "passed": true}
+{"ms": 76966, "turns": 1, "tool_calls": 13, "view": true, "tokens": false, "mode": "mcp", "run": 2, "seconds": 78, "seeded_seen": 3, "passed": true}
+{"ms": 71358, "turns": 1, "tool_calls": 11, "view": true, "tokens": false, "mode": "mcp", "run": 3, "seconds": 72, "seeded_seen": 3, "passed": true}

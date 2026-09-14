@@ -1,0 +1,22 @@
+== POST /todos ×4
+-- h3 060903 #1
+201 15.471971s
+-- h3 060903 #2
+201 6.548330s
+-- h3 060903 #3
+201 0.019890s
+-- h3 060903 #4
+201 0.020001s
+== page shows 4/4 new rows
+== complete ×3
+-- /todos/todo:1xn5bvpjoptfkocakapz/complete
+200 5.984321s
+-- /todos/todo:pl5799ss1dmzbe7ejngn/complete
+200 7.355755s
+-- /todos/todo:nwyv27udejv43u3ng6yc/complete
+200 0.019563s
+== programs
+POST /todos promoted witnesses 2 runs 2 | CREATE todo CONTENT { title: $data.title, done: false, created_at: time::now() };
+POST /todos/{id}/complete promoted witnesses 2 runs 1 | UPDATE type::record($id) MERGE { done: true, completed_at: time::now() };
+
+[exited with code 0]

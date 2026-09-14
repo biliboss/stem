@@ -1,0 +1,130 @@
+{"ms":90588,"view":true,"tokens":true}
+navalha intent 91s
+{"ms":67051,"view":true,"tokens":true}
+feedback 68s
+{"ms":91968,"view":true,"tokens":true}
+feedback 93s
+{"ms":39614,"view":true,"tokens":false}
+feedback 40s
+{"ms":16955,"view":false,"tokens":true}
+feedback 18s
+{"ms":27398,"view":true,"tokens":false}
+feedback 28s
+{"path":"/navalha","turns_to_accept":5,"corrections_to_accept":4,"preferences":[{"scope":"global","rule":"Não use Card como container de seção. Uma seção é um Stack{direction:\"col\"} com um Text{muted:true} curto como rótulo no topo. Reserve Card para no máximo um elemento da tela: o bloco da ação principal.","confidence":0.92,"evidence":["v1→v2 (\"está com cara de SaaS demais\"): navalha.features.agenda/confirm/team (Card), navalha.how (Card), navalha.queue (Card) e navalha.signup (Card) viraram Stack col com navalha.how.label / navalha.queue.label como Text muted","v2→v3 (\"tem caixa demais, deixa o conteúdo respirar\"): nenhum Card sobrou na árvore","v3→v4 (\"não sei o que clicar, tem opção demais\"): só navalha.signup voltou a ser Card{title}, e é o único da página aceita (v5)"]},{"scope":"kind:landing","rule":"Corte cromo de marketing: Badge e Stat de vaidade (contadores, \"grátis\", \"10 minutos\") não entram. Ao remover o Stat, remova também a query de data que só existia para alimentá-lo.","confidence":0.88,"evidence":["v1→v2 (\"está com cara de SaaS demais\"): navalha.hero.badge (Badge), navalha.proof + proof.interest/setup/price (3 Stat) apagados","v1→v2: data.interesse (\"RETURN count(SELECT id FROM lead)\") removida junto, sobrando só data.fila","v3, v4, v5: nenhum Badge ou Stat voltou"]},{"scope":"global","rule":"List/Row é só para dados repetidos (elemento com repeat). Enumeração estática (passos, features, benefícios) é uma sequência de Text irmãos dentro de um Stack col — sem Row, sem List, sem numeração \"1 ·\" no texto.","confidence":0.85,"evidence":["v1→v2 (\"está com cara de SaaS demais\"): navalha.how.list (List) + step1/2/3 (Row) + *.text viraram três Text diretos; os prefixos \"1 · \", \"2 · \", \"3 · \" sumiram do copy","v2..v5: a única List que sobrou é navalha.queue.list, que envolve navalha.queue.item com repeat{path:\"/fila\"}"]},{"scope":"global","rule":"Pendure um único Stack de corpo sob Page e coloque as seções nele, em vez de dar muitos filhos diretos ao Page. O gap desse Stack é o ritmo entre seções.","confidence":0.8,"evidence":["v2→v3 (\"tem caixa demais, deixa o conteúdo respirar\"): navalha.body criado com gap 10; navalha.page passou a ter um só filho","v4/v5 aceito: navalha.body mantido com gap 8"]},{"scope":"global","rule":"Escala de espaçamento em dois níveis: gap entre seções 8, gap dentro de seção 3. O gap interno é sempre menor que o do pai; gaps 1 e 2 são apertados demais para conteúdo de leitura.","confidence":0.82,"evidence":["v2→v3 (\"tem caixa demais, deixa o conteúdo respirar\"): hero 2→4, what 1→4, how 1→3, queue 1→4, signup 2→5, body novo com 10","v3→v4: body 10→8 e todas as seções (hero, what, queue) normalizadas em 3, forma mantida em v5"]},{"scope":"kind:form","rule":"Formulário de captação só pede o que é obrigatório. Campos opcionais (required ausente) devem ser cortados, não deixados \"caso alguém queira preencher\"; o resto se pergunta depois, por contato.","confidence":0.9,"evidence":["v1→v2 (\"está com cara de SaaS demais\"): navalha.signup.form.cadeiras (opcional) removido","v3→v4 (\"não sei o que clicar, tem opção demais\"): form.nome e form.cidade removidos, sobrando barbearia + whatsapp, ambos required:true","v4/v5: navalha.signup.note passou a declarar o custo do formulário (\"Só o nome da loja e o WhatsApp, mais nada\")"]},{"scope":"kind:form","rule":"Com dois a quatro campos curtos, agrupe-os aos pares num Stack{direction:\"row\",gap:4} dentro do Form, em vez de empilhar uma coluna de inputs.","confidence":0.75,"evidence":["v2→v3 (\"tem caixa demais, deixa o conteúdo respirar\"): criados navalha.signup.form.loja e .contato, cada um Stack row gap 4 com dois Input","v4/v5: com dois campos restantes, form.loja (row, gap 4) sobreviveu agrupando barbearia + whatsapp"]},{"scope":"kind:landing","rule":"Uma landing tem uma ação e uma só. Ponha o bloco da ação logo depois do hero, antes da explicação do produto, e deixe o único Button{tone:\"primary\",submit:true} da página nele.","confidence":0.85,"evidence":["v3→v4 (\"não sei o que clicar, tem opção demais\"): navalha.body reordenado de [hero, what, how, signup, queue, footnote] para [hero, signup, what, queue, footnote]","v3→v4: seção navalha.how inteira (label + 3 passos) eliminada, reduzindo de 31 para 23 elementos","v5 aceita mantém a ordem e o Button único"]},{"scope":"global","rule":"Em lista de prova social / dados secundários, mostre um campo por linha e deixe-o muted. Colunas extras no Row repetido são ruído.","confidence":0.72,"evidence":["v3→v4 (\"não sei o que clicar, tem opção demais\"): navalha.queue.item.cidade removido do Row repetido","v4: navalha.queue.item.barbearia ganhou muted:true (antes era texto normal)"]},{"scope":"global","rule":"Label de Button e title de Card falam a intenção do leitor na primeira pessoa (\"Quero testar\"), não a operação do sistema (\"Entrar na fila\"). O mesmo verbo do usuário aparece no title do Card e no label do submit.","confidence":0.83,"evidence":["v1→v2: submit \"Entrar na fila do beta\" → \"Entrar na fila\"","v4→v5 (\"texto de marketing, fala como gente fala com o dono da barbearia\"): submit \"Entrar na fila\" → \"Quero testar\" e Card title \"Entrar na fila\" → \"Quero testar na minha barbearia\""]},{"scope":"global","rule":"Rótulo de seção (Text muted) nomeia o que muda para o leitor, não a categoria do conteúdo: \"O que muda no seu dia\" em vez de \"O que você recebe\"; rótulo de lista diz o que são as linhas (\"Barbearias que já entraram na fila\"), não só o estado.","confidence":0.75,"evidence":["v4: navalha.what.label criado como \"O que você recebe\"","v4→v5 (\"texto de marketing, fala como gente fala com o dono da barbearia\"): \"O que você recebe\" → \"O que muda no seu dia\"; \"Já entraram na fila\" → \"Barbearias que já entraram na fila\""]},{"scope":"global","rule":"Copy em segunda pessoa, com o vocabulário concreto de quem usa (\"corte\", \"cadeira\", \"o cara esqueceu\"), frases curtas e sem verbo de produto (\"o Navalha põe\", \"confirmação automática\"). Heading é uma frase da boca do dono, não um slogan sobre o produto.","confidence":0.8,"evidence":["v1→v2 (\"está com cara de SaaS demais\"): pitch \"O Navalha põe horários, barbeiros e clientes no mesmo lugar\" → \"Você põe os horários, os barbeiros e os serviços no Navalha\"; títulos de Card \"Confirmação automática\" desapareceram com os Cards","v4→v5 (\"texto de marketing, fala como gente fala com o dono da barbearia\"): heading \"A agenda da sua barbearia para de ser um grupo de WhatsApp.\" → \"Sua agenda não cabe mais no grupo do WhatsApp.\"; pitch \"...porque alguém esqueceu\" → \"...para de perder corte porque o cara esqueceu\"; \"no fim do mês, o fechamento da própria cadeira\" → \"você vê quanto cada cadeira rendeu sem fazer conta no papel\""]},{"scope":"global","rule":"Ao enxugar a tela, encurte também o texto que sobra: um Text de seção diz uma coisa só; a segunda oração que justificava o recurso sai junto com a caixa.","confidence":0.68,"evidence":["v3→v4 (\"não sei o que clicar, tem opção demais\"): hero.pitch perdeu a primeira frase (\"Você põe os horários...\"); what.agenda \"...o dia inteiro em uma tela. Você vê o buraco na agenda antes que ele vire prejuízo.\" → \"...o dia inteiro em uma tela.\"","v1→v2: textos de feature deixaram de ter title de Card + texto muted e viraram uma frase única por ideia"]},{"scope":"path:/navalha","rule":"O footnote \"Navalha · feito para barbearia de bairro, não para salão de shopping.\" (Text muted, último filho do body) é intocável — sobreviveu a todas as correções e carrega o posicionamento da página.","confidence":0.6,"evidence":["v1..v5: navalha.footnote inalterado em texto e props apesar de 4 rodadas de corte (39→28→31→23→23 elementos)"]}],"ms":64813}
+accept 66s
+{"ms":72634,"view":true,"tokens":false}
+lavo control 73s
+{"ms":42533,"view":true,"tokens":false}
+lavo treatment 44s
+{"control":"1/14","treatment":"14/14","flip":true,"notes":"A: único Card é o bloco de ação (signup), seções são Stack col com rótulo Text muted; sem Badge/Stat e a única query (/lavanderias) alimenta a lista de prova social, não um contador; List/Row só no elemento com repeat, e a enumeração de benefícios é Text irmão; body único sob Page com gap 8 e seções em gap 3 (o gap 4 do par de inputs é o exigido pela pref de formulário); form só com campos required, pareados em Stack row gap 4; ação única logo após o hero, antes da explicação, com o único Button primary/submit; Row repetido tem um campo muted; 'Quero testar no meu balcão' / 'Quero testar' compartilham o verbo do leitor; rótulos nomeiam o que muda e o que são as linhas; copy em segunda pessoa, frases curtas, heading na boca do dono; footnote de posicionamento intacto, muted, último filho do body.\n\nB: Card usado como container de seção cinco vezes (cta, price, três passos do how); Badge de marketing e três Stats de vaidade, com a query 'leads' existindo só para o $count; why.list é List/Row sem repeat para enumeração estática, e os passos carregam numeração '1.'/'2.'/'3.' no title; Page com sete filhos diretos, sem Stack de corpo, e escala de gaps 4/6/3 sem o par 8/3; form de captação com 'cidade' e o textarea 'operacao' sem required, empilhados em coluna em vez de pares em row gap 4; duas ações concorrentes (hero.form e cta) com dois Button primary submit, e o bloco de ação principal vem depois de toda a explicação; 'Entrar na lista do beta' / 'Entrar na lista' falam a operação do sistema; rótulos de seção são Heading de categoria ('Como funciona', 'Preço'); copy em slogan e voz de produto ('Lavô é o app de agendamento', 'O que o Lavô tira'), com segunda oração de justificativa em quase todo Text; o footnote foi reescrito ('não para rede' + frase extra) e não está sob um body.\n\nRessalvas de escopo: a pref 9 (prova social com um campo muted por linha) não tem alvo em B — não há lista com repeat — então marquei como não violada, não como cumprida por mérito. A pref 14 é path:/navalha e estas duas views são /lavô; julguei pela transposição literal do mesmo footnote de posicionamento — se o escopo for lido ao pé da letra, ela não se aplica a nenhuma das duas e ambas viram true. As prefs kind:form foram aplicadas por causa do formulário de captação embutido em cada landing.","ms":54619}
+lavo judge 56s
+{"ms":83181,"view":true,"tokens":true}
+sorriso control 84s
+{"ms":59456,"view":true,"tokens":false}
+sorriso treatment 60s
+{"control":"1/14","treatment":"14/14","flip":true,"notes":"Pref 14 é escopada a path:/navalha; esta tela é a landing do Sorriso (consultório), então a preferência não se aplica a nenhuma das duas — marcada como não violada em ambas. A tem o footnote análogo ('Sorriso · feito para consultório de bairro...') como último filho do body, mas isso é generalização, não a regra literal.\n\nA: um único Card ('quero'), que é o bloco da ação, logo após o hero e antes da explicação; body Stack gap 8 com seções gap 3; sem Badge/Stat e a única query alimenta a lista repetida; List/Row só no repeat; form só com dois campos obrigatórios, pareados em Stack row gap 4; prova com um campo muted por linha; 'Quero testar no meu consultório' / 'Quero testar' compartilham o verbo do leitor; rótulos 'O que muda no seu dia' e 'Dentistas que já entraram na lista'; copy em segunda pessoa, frases curtas, heading da boca do dono.\n\nB falha em quase tudo: seis Cards de seção (features, how, signup, waitlist); Stat de vaidade 'Dentistas na lista' com a query /interessados que só existe para ele, e Badge em waitlist.item.clinic; passos estáticos numerados '1.', '2.', '3.' no texto; cinco filhos diretos do Page sem Stack de corpo; gaps 2 (hero, how.steps) e 4 sem a escala 8/3; três campos opcionais (clinic, city, pain) e inputs empilhados em coluna; bloco de ação depois de features e how; Row de prova social com três campos, o nome não muted; Card 'Entrar na lista de espera' vs. botão 'Quero ser avisado do lançamento' (operação do sistema, verbos divergentes); títulos categóricos ('Como funciona', 'Quem já está na lista') em vez de rótulo muted; heading é a marca 'Sorriso' + tagline-slogan, com verbo de produto ('o Sorriso chama o próximo', 'o Sorriso confirma'); textos de feature com segunda oração justificando o recurso.","ms":47647}
+sorriso judge 48s
+{"ms":89579,"view":true,"tokens":true}
+forja control 91s
+{"ms":51838,"view":true,"tokens":false}
+forja treatment 53s
+{"control":"2/14","treatment":"14/14","flip":false,"notes":"Both views are the Forja landing, so pref 14 (path:/navalha footnote) doesn't apply to either — marked vacuously true; B does carry an equivalent adapted footnote as last child of body. Pref 9 also doesn't apply to A: A has no repeated/social-proof list at all (its only query feeds a $count Stat), so marked true rather than a violation; 'publico' is a static enumeration, judged under pref 3. A's failures: five Cards used as section containers (como.checkin/treino/retencao, cta, publico) plus no muted section labels; Badge + three Stats with the 'interesse' query existing only for $count; static List/Row in 'publico' with '1./2./3.' numbering in Card titles; six direct children on Page with no body Stack; no 8/3 scale (como.cards gap 4 inside como gap 3 inverts the inner<parent rule); cta.form keeps four optional fields (whatsapp, alunos, mensagem) stacked as a column instead of paired rows; two forms and two primary submits, with the main action block at the end instead of right after the hero; 'Entrar na lista' + 'Quer ver a Forja rodando...' are system/second-person, not the same first-person verb; headline is a product slogan and copy makes Forja the subject ('A Forja marca quem não aparece') with two-clause justifying sentences throughout. B satisfies every applicable preference: single Card on the action block placed immediately after the hero with the page's only primary submit, matching 'Quero testar' verb in title and label, body Stack gap 8 with gap-3 sections, both form fields required and paired in a row gap 4, repeat-driven list with one muted field per Row, reader-facing muted labels, and short owner-voice copy.","ms":48188}
+forja judge 49s
+{
+ "acceptances": [
+  {
+   "corrections_to_accept": 4,
+   "created_at": "2026-09-14T08:15:29.334Z",
+   "path": "/navalha",
+   "turns_to_accept": 5
+  }
+ ],
+ "preferences": [
+  {
+   "confidence": 0.92,
+   "created_at": "2026-09-14T08:15:29.261Z",
+   "rule": "Não use Card como container de seção. Uma seção é um Stack{direction:\"col\"} com um Text{muted:true} curto como rótulo no topo. Reserve Card para no máximo um elemento da tela: o bloco da ação principal.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.88,
+   "created_at": "2026-09-14T08:15:29.274Z",
+   "rule": "Corte cromo de marketing: Badge e Stat de vaidade (contadores, \"grátis\", \"10 minutos\") não entram. Ao remover o Stat, remova também a query de data que só existia para alimentá-lo.",
+   "scope": "kind:landing"
+  },
+  {
+   "confidence": 0.85,
+   "created_at": "2026-09-14T08:15:29.285Z",
+   "rule": "List/Row é só para dados repetidos (elemento com repeat). Enumeração estática (passos, features, benefícios) é uma sequência de Text irmãos dentro de um Stack col — sem Row, sem List, sem numeração \"1 ·\" no texto.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.8,
+   "created_at": "2026-09-14T08:15:29.289Z",
+   "rule": "Pendure um único Stack de corpo sob Page e coloque as seções nele, em vez de dar muitos filhos diretos ao Page. O gap desse Stack é o ritmo entre seções.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.82,
+   "created_at": "2026-09-14T08:15:29.295Z",
+   "rule": "Escala de espaçamento em dois níveis: gap entre seções 8, gap dentro de seção 3. O gap interno é sempre menor que o do pai; gaps 1 e 2 são apertados demais para conteúdo de leitura.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.9,
+   "created_at": "2026-09-14T08:15:29.299Z",
+   "rule": "Formulário de captação só pede o que é obrigatório. Campos opcionais (required ausente) devem ser cortados, não deixados \"caso alguém queira preencher\"; o resto se pergunta depois, por contato.",
+   "scope": "kind:form"
+  },
+  {
+   "confidence": 0.75,
+   "created_at": "2026-09-14T08:15:29.303Z",
+   "rule": "Com dois a quatro campos curtos, agrupe-os aos pares num Stack{direction:\"row\",gap:4} dentro do Form, em vez de empilhar uma coluna de inputs.",
+   "scope": "kind:form"
+  },
+  {
+   "confidence": 0.85,
+   "created_at": "2026-09-14T08:15:29.307Z",
+   "rule": "Uma landing tem uma ação e uma só. Ponha o bloco da ação logo depois do hero, antes da explicação do produto, e deixe o único Button{tone:\"primary\",submit:true} da página nele.",
+   "scope": "kind:landing"
+  },
+  {
+   "confidence": 0.72,
+   "created_at": "2026-09-14T08:15:29.311Z",
+   "rule": "Em lista de prova social / dados secundários, mostre um campo por linha e deixe-o muted. Colunas extras no Row repetido são ruído.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.83,
+   "created_at": "2026-09-14T08:15:29.315Z",
+   "rule": "Label de Button e title de Card falam a intenção do leitor na primeira pessoa (\"Quero testar\"), não a operação do sistema (\"Entrar na fila\"). O mesmo verbo do usuário aparece no title do Card e no label do submit.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.75,
+   "created_at": "2026-09-14T08:15:29.319Z",
+   "rule": "Rótulo de seção (Text muted) nomeia o que muda para o leitor, não a categoria do conteúdo: \"O que muda no seu dia\" em vez de \"O que você recebe\"; rótulo de lista diz o que são as linhas (\"Barbearias que já entraram na fila\"), não só o estado.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.8,
+   "created_at": "2026-09-14T08:15:29.323Z",
+   "rule": "Copy em segunda pessoa, com o vocabulário concreto de quem usa (\"corte\", \"cadeira\", \"o cara esqueceu\"), frases curtas e sem verbo de produto (\"o Navalha põe\", \"confirmação automática\"). Heading é uma frase da boca do dono, não um slogan sobre o produto.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.68,
+   "created_at": "2026-09-14T08:15:29.327Z",
+   "rule": "Ao enxugar a tela, encurte também o texto que sobra: um Text de seção diz uma coisa só; a segunda oração que justificava o recurso sai junto com a caixa.",
+   "scope": "global"
+  },
+  {
+   "confidence": 0.6,
+   "created_at": "2026-09-14T08:15:29.331Z",
+   "rule": "O footnote \"Navalha · feito para barbearia de bairro, não para salão de shopping.\" (Text muted, último filho do body) é intocável — sobreviveu a todas as correções e carrega o posicionamento da página.",
+   "scope": "path:/navalha"
+  }
+ ]
+}
+
+[exited with code 0]

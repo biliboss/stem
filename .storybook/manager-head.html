@@ -1,0 +1,11 @@
+<link href="https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans@5/index.css" rel="stylesheet" />
+<script>
+  // Served inside a system at /_ds/: esc (outside an input) goes back to the app, like the kernel's own motions.
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.metaKey || e.ctrlKey || e.target.closest("input, textarea, [contenteditable]")) return;
+    if (!location.pathname.startsWith("/_ds")) return;
+    // g d opens this in its own tab: esc closes that tab and the app is right behind it.
+    if (window.opener) return window.close();
+    document.referrer && new URL(document.referrer).origin === location.origin ? history.back() : location.assign("/");
+  });
+</script>

@@ -1,0 +1,6 @@
+# derivative of pnpm install
+node_modules/
+# runtime state: the systems, their .system/ databases and the agent cwd
+.run/
+# the static Storybook build, served at /_ds
+storybook-static/

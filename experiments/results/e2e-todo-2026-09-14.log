@@ -1,0 +1,15 @@
+200
+{"result":{"content":[{"type":"text","text":"200 {\"ms\":64190,\"turns\":1,\"tool_calls\":11,\"view\":true,\"tokens\":false}"}],"isError":false},"jsonrpc":"2.0"
+     intent 65s
+ok   home deixou de ser o bootstrap
+     form → POST /todos · field title
+     add "Comprar leite" → 201 10s
+     add "Levar moto na revisão" → 201 3s
+ok   as duas tarefas aparecem
+ok   a segunda também
+     primeira ação de item → POST /todos/todo:gbqgqjkr9s4jpc50fb1v/complete
+     complete → 200 4s
+ok   uma tarefa foi para concluídas
+PASS
+
+[exited with code 0]

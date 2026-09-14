@@ -1,0 +1,14 @@
+/Users/billiboss/.zshenv:.:1: operation not permitted: /Users/billiboss/.cargo/env
+{"result":{"content":[{"type":"text","text":"200 {\"ms\":49766,\"turns\":1,\"tool_calls\":8,\"view\":true,\"tokens\":false}"}],"isError":false},"jsonrpc":"2.0",
+intent 51s
+form POST /todos · field title
+add #1  X-Resolved-By: program:3rtwhj783i73wb70w6kw (8 ms) 201 0.019146s 
+add #2  X-Resolved-By: program:3rtwhj783i73wb70w6kw (8 ms) 201 0.018456s 
+page shows 2/2
+item action /todos/todo:sjp5322eize1chiiowv2/complete  X-Resolved-By: program:bsfzhwnro7epe7c58quh (8 ms) 200 0.017464s 
+view renders clean
+POST /todos promoted runs 2  | CREATE todo SET title = $data.title, done = false, created = time::now(), completed = NONE
+POST /todos/{id}/complete promoted runs 1  | UPDATE type::record($id) SET done = true, completed = time::now()
+POST /todos/{id}/reopen promoted runs 0  | UPDATE type::record($id) SET done = false, completed = NONE
+
+[exited with code 0]

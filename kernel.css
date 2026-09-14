@@ -1,0 +1,289 @@
+/* kernel.css — the default world every system is born with. Shell inlines it; Storybook imports it. */
+#working { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none;
+  background: oklch(0% 0 0 / 0); backdrop-filter: blur(0); opacity: 0; transition: all .35s ease; }
+body.working #working { background: oklch(21% .012 257 / .22); backdrop-filter: blur(3px); opacity: 1; pointer-events: auto; }
+#working span { animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: .45; } }
+form.htmx-request button[type=submit] { pointer-events: none; opacity: .6; }
+form.htmx-request button[type=submit]::after { content: " · pensando…"; }
+/* The kernel's default world: a neutral ground, ink and one blue, one sans (Mona Sans). Low chrome — sections are separated by
+   space and a hairline, never by filled boxes. Every system starts here; tokens override it. */
+[data-theme=kernel] { color-scheme: light;
+  --color-base-100: oklch(98.6% .002 247); --color-base-200: oklch(96.3% .003 247); --color-base-300: oklch(91.2% .005 247);
+  --color-base-content: oklch(21% .012 257);
+  --color-primary: oklch(35% .075 258); --color-primary-content: oklch(98.6% .002 247);
+  --color-secondary: oklch(45% .02 257); --color-secondary-content: oklch(98.6% .002 247);
+  --color-accent: oklch(55% .09 195); --color-accent-content: oklch(98.6% .002 247);
+  --color-neutral: oklch(26% .012 257); --color-neutral-content: oklch(96.3% .003 247);
+  --color-info: oklch(52% .08 240); --color-info-content: oklch(98.6% .002 247);
+  --color-success: oklch(50% .08 155); --color-success-content: oklch(98.6% .002 247);
+  --color-warning: oklch(70% .12 75); --color-warning-content: oklch(21% .012 257);
+  --color-error: oklch(52% .15 28); --color-error-content: oklch(98.6% .002 247);
+  --radius-selector: .25rem; --radius-field: .375rem; --radius-box: .5rem;
+  --size-selector: .25rem; --size-field: .25rem; --border: 1px; --depth: 0; --noise: 0; }
+body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; font-size: 1rem; line-height: 1.55;
+  -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 0; }
+.kernel-display { font-size: 2.5rem; font-weight: 640; line-height: 1.1; letter-spacing: -0.025em; text-wrap: balance; }
+.kernel-heading { font-size: 1.125rem; line-height: 1.3; font-weight: 620; letter-spacing: -0.005em; text-wrap: balance; }
+.kernel-figure { font-size: 2rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.kernel-section + .kernel-section { margin-top: .5rem; }
+.kernel-blank { min-height: 100svh; display: grid; place-content: center; gap: 1.25rem; padding: 2rem; text-align: left; }
+.kernel-hint { display: flex; align-items: center; gap: .375rem; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
+.kernel-hint span { margin-left: .375rem; }
+.kernel-blank .kernel-hint + .kernel-hint { margin-top: -.5rem; font-size: .875rem; }
+.kbd { font-family: inherit; min-height: 1.75rem; min-width: 1.75rem; background: var(--color-base-100); }
+#palette { padding: 0; border: 0; background: transparent; width: min(40rem, calc(100vw - 2rem)); margin: 14vh auto auto; }
+#palette::backdrop { background: oklch(21% .012 257 / .22); backdrop-filter: blur(3px); }
+#palette .sheet { background: var(--color-base-100); border-radius: var(--radius-box);
+  box-shadow: 0 24px 60px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300); overflow: hidden; }
+#palette input { width: 100%; border: 0; outline: 0; background: transparent; padding: 1.125rem 1.25rem; font-size: 1.125rem; }
+#palette ul { border-top: 1px solid var(--color-base-300); max-height: 50vh; overflow: auto; padding: .375rem; }
+#palette li { display: flex; align-items: baseline; gap: .75rem; padding: .625rem .875rem; border-radius: var(--radius-field); cursor: pointer; }
+#palette li[aria-selected=true] { background: var(--color-base-200); }
+#palette li b { font-weight: 600; white-space: nowrap; }
+#palette li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
+#palette li small { margin-left: auto; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); white-space: nowrap; }
+#palette footer { display: flex; gap: 1rem; padding: .5rem 1.25rem; font-size: .8125rem; border-top: 1px solid var(--color-base-300);
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+.kernel-muted { color: color-mix(in oklch, var(--color-base-content) 62%, transparent); }
+.kernel-meta { margin-left: auto; padding-left: 1rem; white-space: nowrap; font-size: .875rem;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent); font-variant-numeric: tabular-nums; }
+.btn { font-weight: 600; box-shadow: none; }
+.input, .textarea { background: var(--color-base-100); }
+.checkbox { --size: 1.25rem; }
+::selection { background: oklch(35% .075 258 / .18); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+a { text-underline-offset: .2em; }
+body.editing [data-system-id] { outline: 1px dashed oklch(70% .15 250 / .5); outline-offset: 2px; cursor: crosshair; }
+body.editing [data-system-id].target { outline: 2px solid oklch(70% .2 250); }
+
+/* Interaction states, one rule for every tone: hover darkens 8%, pressed 16% and sinks 1px, disabled
+   keeps the color at 40% and refuses the pointer. .is-hover / .is-active force a state for the catalog. */
+.btn { transition: background-color .12s ease, border-color .12s ease, transform .06s ease; }
+.btn:not(.btn-ghost):not(.btn-link):hover, .btn.is-hover:not(.btn-ghost) {
+  background-color: color-mix(in oklch, var(--btn-bg, var(--btn-color, var(--color-base-200))) 92%, black);
+  border-color: color-mix(in oklch, var(--btn-bg, var(--btn-color, var(--color-base-200))) 92%, black); }
+.btn:not(.btn-ghost):not(.btn-link):active, .btn.is-active:not(.btn-ghost) {
+  background-color: color-mix(in oklch, var(--btn-bg, var(--btn-color, var(--color-base-200))) 84%, black);
+  border-color: color-mix(in oklch, var(--btn-bg, var(--btn-color, var(--color-base-200))) 84%, black); transform: translateY(1px); }
+.btn-ghost:hover, .btn-ghost.is-hover { background-color: var(--color-base-200); }
+.btn-ghost:active, .btn-ghost.is-active { background-color: var(--color-base-300); transform: translateY(1px); }
+.btn:disabled, .btn[disabled], .btn-disabled { opacity: .4; cursor: not-allowed; pointer-events: none; transform: none; }
+/* DaisyUI paints disabled buttons gray; the kernel keeps the tone, so "disabled primary" still reads as primary. */
+.btn:not(.btn-ghost):not(.btn-link):is(:disabled, [disabled], .btn-disabled) {
+  background-color: var(--btn-color, var(--color-base-200)); border-color: var(--btn-color, var(--color-base-200));
+  color: var(--btn-fg, var(--color-base-content)); }
+.input:hover, .textarea:hover, .input.is-hover { border-color: color-mix(in oklch, var(--color-base-content) 30%, transparent); }
+.input:focus, .textarea:focus, .input.is-active { border-color: var(--color-primary); outline: 2px solid color-mix(in oklch, var(--color-primary) 22%, transparent); outline-offset: 0; }
+.input:disabled, .textarea:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Media: figures sit on the page without a box; the zoom surface is the only framed thing. */
+.kernel-figure-block { display: flex; flex-direction: column; gap: .5rem; position: relative; }
+.kernel-zoom { position: relative; overflow: hidden; border: 1px solid var(--color-base-300); border-radius: var(--radius-box);
+  background: var(--color-base-100); cursor: grab; touch-action: none; }
+.kernel-zoom.is-dragging { cursor: grabbing; }
+.kernel-zoom > div, .kernel-zoom > img { will-change: transform; }
+.kernel-zoom svg { max-width: none; height: auto; }
+.kernel-zoombar { position: absolute; top: .5rem; right: .5rem; display: flex; gap: .125rem; padding: .125rem;
+  background: var(--color-base-100); border: 1px solid var(--color-base-300); border-radius: var(--radius-field); }
+.kernel-image { width: 100%; max-height: min(28rem, 60vh); object-fit: cover; border-radius: var(--radius-box); cursor: zoom-in; }
+.kernel-lightbox { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+  background: color-mix(in oklch, var(--color-base-content) 88%, transparent); }
+.kernel-lightbox::backdrop { background: transparent; }
+.kernel-lightbox .kernel-zoom { border: 0; border-radius: 0; background: transparent; display: grid; place-items: center; }
+.kernel-lightbox img { max-width: 92vw; max-height: 92vh; }
+.kernel-lightbox-close { position: fixed; top: 1rem; right: 1rem; color: var(--color-base-100); }
+.kernel-code { border: 1px solid var(--color-base-300); border-radius: var(--radius-box); gap: 0; background: var(--color-base-200); }
+.kernel-code code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.kernel-prose { max-width: 65ch; }
+.kernel-prose > * + * { margin-top: .75rem; }
+.kernel-prose ul { list-style: disc; padding-left: 1.25rem; }
+.kernel-prose a { color: var(--color-primary); text-decoration: underline; }
+
+/* App shell: sidebar and content. The sidebar is a quiet column, not a filled panel. */
+.kernel-split { display: grid; gap: 2.5rem; align-items: start; }
+@media (min-width: 64rem) { .kernel-split { grid-template-columns: 15rem minmax(0, 1fr); gap: 3.5rem; } }
+.kernel-sidebar { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 1.5rem; }
+.kernel-sidebar-title { font-size: .8125rem; font-weight: 600; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+.kernel-sidebar .kernel-heading { font-size: .8125rem; margin-top: 1rem; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+.kernel-link { display: flex; align-items: center; gap: .625rem; padding: .4375rem .625rem; border-radius: var(--radius-field);
+  color: var(--color-base-content); text-decoration: none; transition: background-color .12s ease; }
+.kernel-link:hover { background: var(--color-base-200); }
+.kernel-link.is-active { background: var(--color-base-200); font-weight: 600; }
+.kernel-link .kernel-meta { padding-left: .5rem; }
+.kernel-dot { width: .5rem; height: .5rem; border-radius: 999px; flex: none; }
+.kernel-tag { --tag: var(--color-base-content); display: inline-flex; align-items: center; height: 1.375rem; padding: 0 .5rem;
+  border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap;
+  color: color-mix(in oklch, var(--tag) 85%, black); background: color-mix(in oklch, var(--tag) 14%, transparent); }
+
+/* The studio — what the owner sees while an agent designs. Mode: Experience. One authored moment: the
+   thought appears, the wireframe is drawn, and the finished screen develops out of it.
+
+   rail        five phases across the top; the current one fills, the done ones stay solid
+   narration   the agent's current thought, large and centered, over a page that steps back
+   drafted     once a skeleton exists, the thought moves to the lower left and the blueprint takes the stage */
+body.studio #working { opacity: 0 !important; pointer-events: none !important; }
+.kernel-studio { position: fixed; inset: 0; pointer-events: none; z-index: 55; }
+.kernel-rail { position: absolute; top: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: .375rem;
+  padding: 1rem 1.5rem 0; opacity: 0; transform: translateY(-.5rem); transition: opacity .4s ease, transform .5s cubic-bezier(.16, 1, .3, 1); }
+body.studio .kernel-rail { opacity: 1; transform: none; }
+.kernel-rail li { display: flex; flex-direction: column; gap: .5rem; }
+.kernel-rail-bar { position: relative; height: 3px; border-radius: 999px; overflow: hidden; background: color-mix(in oklch, var(--color-base-content) 10%, transparent); }
+.kernel-rail-bar::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: var(--color-base-content);
+  transition: transform .6s cubic-bezier(.16, 1, .3, 1); }
+.kernel-rail li.is-current .kernel-rail-bar::after { transform: scaleX(.42); background: var(--color-primary); animation: kernel-rail-think 2.4s ease-in-out infinite; }
+.kernel-rail li.is-done .kernel-rail-bar::after { transform: scaleX(1); }
+@keyframes kernel-rail-think { 0%, 100% { transform: scaleX(.18); } 50% { transform: scaleX(.72); } }
+.kernel-rail-label { font-size: .75rem; letter-spacing: .01em; color: color-mix(in oklch, var(--color-base-content) 40%, transparent); transition: color .3s ease; }
+.kernel-rail li.is-current .kernel-rail-label { color: var(--color-base-content); font-weight: 600; }
+.kernel-rail li.is-done .kernel-rail-label { color: color-mix(in oklch, var(--color-base-content) 70%, transparent); }
+
+/* The page steps back while the agent only thinks; it comes forward again as soon as there is a sketch. */
+#kernel-body { transition: opacity .6s ease, filter .6s ease; }
+body.studio:not(.drafted) #kernel-body { opacity: 0; filter: blur(6px); }
+
+.kernel-narration { position: absolute; left: 50%; top: 46%; width: min(40rem, calc(100vw - 3rem)); margin: 0; display: flex; flex-direction: column; gap: 1rem;
+  transform: translate(-50%, -50%); opacity: 0; transition: top .7s cubic-bezier(.16, 1, .3, 1), left .7s cubic-bezier(.16, 1, .3, 1),
+  width .7s cubic-bezier(.16, 1, .3, 1), transform .7s cubic-bezier(.16, 1, .3, 1), opacity .4s ease; }
+body.studio .kernel-narration { opacity: 1; }
+#kernel-narration-phase { display: flex; align-items: center; gap: .625rem; font-size: .875rem; font-weight: 600; color: var(--color-primary); }
+#kernel-narration-phase::before { content: ""; width: .5rem; height: .5rem; border-radius: 999px; background: currentColor; animation: breathe 1.4s ease-in-out infinite; }
+#kernel-narration-text { margin: 0; font-size: 1.5rem; line-height: 1.35; font-weight: 520; letter-spacing: -0.012em; text-wrap: pretty; color: var(--color-base-content); }
+#kernel-narration-text:empty { display: none; }
+#kernel-narration-text[data-from]::before { content: attr(data-from); display: block; margin-bottom: .5rem; font-size: .75rem; font-weight: 500;
+  letter-spacing: .01em; color: color-mix(in oklch, var(--color-base-content) 45%, transparent); }
+.kernel-narration.is-in #kernel-narration-text { animation: kernel-thought .9s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes kernel-thought { from { opacity: 0; filter: blur(6px); transform: translateY(.5rem); } to { opacity: 1; filter: none; transform: none; } }
+
+body.studio.drafted .kernel-narration { left: 1.5rem; top: auto; bottom: 1.5rem; width: min(24rem, calc(100vw - 3rem)); transform: none; gap: .375rem;
+  padding: .875rem 1rem; border-radius: var(--radius-box); background: var(--color-base-100);
+  box-shadow: 0 18px 44px -20px oklch(21% .012 257 / .4), 0 0 0 1px var(--color-base-300); }
+body.studio.drafted #kernel-narration-text { font-size: .875rem; line-height: 1.45; font-weight: 450; color: color-mix(in oklch, var(--color-base-content) 72%, transparent); }
+
+/* Blueprint: the wireframe is drawn on a faint dot grid; structure is text, dashed outlines and dark blocks.
+   It is an outline, not a loading state: nothing in it moves. */
+body.studio.drafted { background-image: radial-gradient(color-mix(in oklch, var(--color-base-content) 12%, transparent) 1px, transparent 1px);
+  background-size: 1.25rem 1.25rem; }
+.kernel-wireframe [data-system-id] { outline: 1px dashed color-mix(in oklch, var(--color-base-content) 24%, transparent); outline-offset: 0; }
+/* The outline shows where each element's box really ends; `o` hides it (kernel.js). */
+body.no-outline .kernel-wireframe [data-system-id] { outline: none; }
+.kernel-wireframe [data-fresh] { outline-color: var(--color-primary); outline-style: solid; }
+.kernel-wireframe :is(.btn, .input, .select, .textarea, .checkbox, .toggle, .badge, .kernel-tag, img, .kernel-zoom, .kernel-code) {
+  box-shadow: none !important; border-radius: .25rem !important; }
+/* The mockup is written in text: titles, labels and example rows read at their real size, in graphite. */
+.kernel-wireframe { color: color-mix(in oklch, var(--color-base-content) 78%, transparent); }
+.kernel-wireframe .btn { color: var(--color-base-content) !important; }
+.kernel-wireframe .kernel-page { background: transparent; }
+.kernel-wire-lines { display: flex; flex-direction: column; gap: .75rem; padding: .5rem 0; width: 100%; }
+.kernel-wire-lines i { display: block; height: .625rem; border-radius: 999px; background: color-mix(in oklch, var(--color-base-content) 13%, transparent); }
+.kernel-wire-lines i:nth-child(1) { width: 92%; } .kernel-wire-lines i:nth-child(2) { width: 74%; } .kernel-wire-lines i:nth-child(3) { width: 56%; }
+.kernel-wireframe .kernel-draft-slot { background: color-mix(in oklch, var(--color-base-content) 9%, transparent); }
+
+/* The finished screen develops out of the wireframe. */
+::view-transition-old(root) { animation: kernel-develop-out .45s ease both; }
+::view-transition-new(root) { animation: kernel-develop-in .7s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes kernel-develop-out { to { opacity: 0; filter: blur(4px); } }
+@keyframes kernel-develop-in { from { opacity: 0; filter: grayscale(1) contrast(1.3); } to { opacity: 1; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .kernel-studio *, .kernel-wireframe * { animation: none !important; transition: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+
+/* Interactive: the fold. While a phase waits, the thought is read whole in a centered sheet with a quiet
+   scroll, and the answer lives under it. After the sketch, the same fold sits in the corner over the blueprint. */
+.kernel-gate { display: none; gap: .5rem; align-items: center; margin-top: .25rem; pointer-events: auto; }
+body.awaiting .kernel-gate { display: flex; }
+body.awaiting .kernel-narration { pointer-events: auto; }
+.kernel-gate input { flex: 1; min-width: 0; height: 2.5rem; padding: 0 .875rem; border-radius: var(--radius-field); background: var(--color-base-100);
+  border: 1px solid var(--color-base-300); font-size: .9375rem; }
+.kernel-gate input:focus { outline: 2px solid color-mix(in oklch, var(--color-primary) 30%, transparent); border-color: var(--color-primary); }
+.kernel-gate .btn { height: 2.5rem; gap: .5rem; }
+.kernel-kbd { font: inherit; font-size: .75rem; opacity: .7; }
+body.awaiting:not(.drafted) .kernel-narration { top: 50%; width: min(44rem, calc(100vw - 3rem)); }
+body.awaiting #kernel-narration-text { max-height: 52vh; overflow: auto; padding-right: .5rem; font-size: 1.1875rem; line-height: 1.55; font-weight: 450;
+  scrollbar-width: thin; scrollbar-color: var(--color-base-300) transparent; }
+body.awaiting #kernel-narration-text.is-overflow { mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent); }
+#kernel-narration-text p { margin: 0; }
+#kernel-narration-text ul { margin: .875rem 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .5rem; }
+#kernel-narration-text li { position: relative; padding-left: 1.25rem; }
+#kernel-narration-text li::before { content: ""; position: absolute; left: .125rem; top: .72em; width: .375rem; height: .375rem; border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-content) 35%, transparent); }
+#kernel-narration-text p + p { margin-top: .875rem; }
+#kernel-narration-text p.is-lead { font-size: .875em; font-weight: 600; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+#kernel-narration-text p.is-lead + p { margin-top: .25rem; }
+#kernel-narration-text p:first-child:not(.is-lead) { font-weight: 600; }
+body.awaiting #kernel-narration-phase { color: var(--color-base-content); }
+body.awaiting #kernel-narration-phase::before { background: var(--color-warning); animation: none; }
+body.awaiting.drafted .kernel-narration { width: min(30rem, calc(100vw - 3rem)); }
+body.awaiting.drafted #kernel-narration-text { max-height: 30vh; font-size: .9375rem; }
+.kernel-rail li.is-done:has(+ li:not(.is-done)) .kernel-rail-label { color: var(--color-base-content); }
+
+/* Wireframe, lighter: a control is read by what it says. A field is its placeholder over a rule, a button is its
+   label, a tag is its word; only the checkbox stays a shape. No fills, so nothing reads as an unnamed dark block. */
+.kernel-wireframe :is(.btn, .input, .select, .textarea, .badge, .kernel-tag, img, .kernel-zoom, .kernel-code) {
+  background: transparent !important; border: 1px solid color-mix(in oklch, var(--color-base-content) 22%, transparent) !important; opacity: 1; }
+.kernel-wireframe :is(.input, .select, .textarea) { border-width: 0 0 1px !important; border-radius: 0 !important; padding-left: 0; }
+.kernel-wireframe :is(.input, .textarea)::placeholder { color: color-mix(in oklch, var(--color-base-content) 50%, transparent); }
+.kernel-wireframe .btn-ghost { border-color: transparent !important; text-decoration: underline; text-underline-offset: .2em; }
+.kernel-wireframe .btn-primary { border-color: var(--color-base-content) !important; }
+.kernel-wireframe :is(.badge, .kernel-tag) { font-size: .75rem; color: color-mix(in oklch, var(--color-base-content) 70%, transparent) !important; }
+.kernel-wireframe .checkbox { background: transparent !important; border: 1px solid color-mix(in oklch, var(--color-base-content) 40%, transparent) !important; }
+.kernel-wireframe .checkbox { width: 1rem; height: 1rem; }
+.kernel-wireframe .kernel-meta:empty::after, .kernel-wireframe p:empty::after { content: ""; display: inline-block; width: 6rem; height: .625rem; border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-content) 12%, transparent); }
+.kernel-wireframe [data-system-id] { outline-color: color-mix(in oklch, var(--color-base-content) 14%, transparent); }
+
+/* The fold at a glance. A phase with sections becomes a sheet that owns the whole first fold between the rail and
+   the screen's bottom edge: nothing scrolls the page. Text sections flow as newspaper columns on the left; a diagram
+   owns the right column at full height and is scaled to fit it. The answer bar is pinned to the sheet's foot. */
+body.studio:not(.drafted) .kernel-narration.is-wide {
+  top: 3.75rem; bottom: 1.25rem; left: 50%; width: min(96rem, calc(100vw - 3rem)); transform: translateX(-50%);
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: .75rem; max-height: none; overflow: hidden; }
+body.studio:not(.drafted) .kernel-narration.is-wide #kernel-narration-text {
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 1rem; min-height: 0; max-height: none; overflow: hidden;
+  font-size: .9375rem; line-height: 1.5; mask-image: none; padding: 0; }
+body.studio:not(.drafted) .kernel-narration.is-wide #kernel-narration-text[data-from]::before { display: none; }
+.kernel-fold-intro { max-width: 70ch; }
+.kernel-fold-intro:empty { display: none; }
+.kernel-fold-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; min-height: 0; height: 100%; }
+.kernel-fold-grid.has-diagram { grid-template-columns: minmax(0, 1fr) minmax(24rem, 42%); }
+.kernel-fold-text { columns: 15rem; column-gap: 2.5rem; column-fill: balance; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.kernel-fold-text section, .kernel-fold-grid > section { display: flex; flex-direction: column; gap: .5rem; break-inside: avoid; margin-bottom: 1.5rem;
+  padding-top: .625rem; border-top: 1px solid var(--color-base-300); min-width: 0; }
+.kernel-fold-grid h3 { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent); }
+.kernel-fold-grid ul { margin: 0 !important; gap: .375rem !important; }
+.kernel-fold-grid li { font-size: .9375rem; padding-left: 1rem !important; }
+.kernel-fold-grid li::before { top: .62em !important; width: .3125rem !important; height: .3125rem !important; }
+.kernel-fold-grid > section { margin-bottom: 0; height: 100%; min-height: 0; }
+.kernel-fold-diagram { flex: 1; min-height: 0; height: auto; border-radius: var(--radius-box); border: 1px solid var(--color-base-300); background: var(--color-base-100); overflow: hidden; }
+.kernel-fold-diagram > div { width: 100%; height: 100%; display: grid; place-items: center; padding: .75rem; box-sizing: border-box; }
+.kernel-fold-diagram svg { width: 100% !important; height: 100% !important; max-width: none !important; }
+#kernel-narration-text code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85em; padding: .05rem .3rem; border-radius: .25rem; background: var(--color-base-200); }
+@media (max-width: 64rem) {
+  .kernel-fold-grid.has-diagram { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(16rem, 40%); }
+}
+
+/* Entity cards: a quiet table per entity, two to a row, relations under them. */
+.kernel-entities-block { display: flex; flex-direction: column; gap: 1rem; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.kernel-entities { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .75rem; align-items: start; }
+.kernel-entities table { width: 100%; border-collapse: collapse; font-size: .8125rem; border: 1px solid var(--color-base-300); border-radius: var(--radius-box);
+  overflow: hidden; background: var(--color-base-100); }
+.kernel-entities caption { caption-side: top; text-align: left; font-weight: 600; font-size: .875rem; padding: 0 0 .375rem .125rem; }
+.kernel-entities td { padding: .3125rem .625rem; border-top: 1px solid var(--color-base-200); }
+.kernel-entities td:first-child { font-weight: 500; }
+.kernel-entities td:last-child { text-align: right; font-variant-numeric: tabular-nums; color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .75rem; }
+.kernel-relations { margin: 0 !important; display: flex !important; flex-direction: column; gap: .25rem !important; }
+.kernel-relations li { font-size: .8125rem !important; color: color-mix(in oklch, var(--color-base-content) 65%, transparent); }
+
+/* The rail is navigation once a phase is lived: done steps are clickable, with a quiet "voltar aqui" on hover. */
+body.studio .kernel-rail { pointer-events: auto; }
+.kernel-rail li.is-done, .kernel-rail li.is-current { cursor: pointer; }
+.kernel-rail li.is-done:hover .kernel-rail-bar::after { background: var(--color-primary); }
+.kernel-rail li.is-done:hover .kernel-rail-label::after { content: " · voltar aqui"; color: var(--color-primary); font-weight: 500; }
+
+/* The fold can be dragged aside: `translate` composes with every transform the fold's placements already use. */
+.kernel-narration { translate: var(--fold-dx, 0) var(--fold-dy, 0); }
+body.awaiting .kernel-narration { cursor: grab; }
+body.awaiting .kernel-narration :is(input, button) { cursor: auto; }
+.kernel-narration.is-dragging { cursor: grabbing; transition: none; user-select: none; }
