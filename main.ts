@@ -241,17 +241,29 @@ body.editing [data-system-id].target { outline: 2px solid oklch(70% .2 250); }
    drafted     once a skeleton exists, the thought moves to the lower left and the blueprint takes the stage */
 body.studio #working { opacity: 0 !important; pointer-events: none !important; }
 .kernel-studio { position: fixed; inset: 0; pointer-events: none; z-index: 55; }
-.kernel-rail { position: absolute; top: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: .375rem;
-  padding: 1rem 1.5rem 0; opacity: 0; transform: translateY(-.5rem); transition: opacity .4s ease, transform .5s cubic-bezier(.16, 1, .3, 1); }
+/* The rail floats at the lower right, above ✓ aceitar: across the top it sat on the screen's own header, and on a dark
+   screen its ink vanished. It carries its own surface, so it reads on any theme the view chose. */
+.kernel-rail { position: fixed; right: 1.5rem; bottom: 3.75rem; width: 15rem; margin: 0; list-style: none; display: grid;
+  grid-template-columns: repeat(5, 1fr); gap: .25rem; padding: .625rem .75rem 1.75rem; border-radius: var(--radius-box);
+  background: var(--color-base-100); color: var(--color-base-content);
+  box-shadow: 0 18px 44px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300);
+  opacity: 0; transform: translateY(.5rem); transition: opacity .4s ease, transform .5s cubic-bezier(.16, 1, .3, 1); }
 body.studio .kernel-rail { opacity: 1; transform: none; }
-.kernel-rail li { display: flex; flex-direction: column; gap: .5rem; }
+.kernel-rail li { display: flex; flex-direction: column; }
+/* One label shows: the phase at work, or the last one lived while the owner answers. The rest are bars. */
+.kernel-rail-label { position: absolute; left: .75rem; right: .75rem; bottom: .5rem; opacity: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.kernel-rail li.is-current .kernel-rail-label,
+.kernel-rail:not(:has(.is-current)) li.is-done:has(+ li:not(.is-done)) .kernel-rail-label,
+.kernel-rail:not(:has(.is-current)) li.is-done:last-child .kernel-rail-label,
+.kernel-rail li.is-done:hover .kernel-rail-label { opacity: 1; }
+.kernel-rail:has(li.is-done:hover) li:not(:hover) .kernel-rail-label { opacity: 0; }
 .kernel-rail-bar { position: relative; height: 3px; border-radius: 999px; overflow: hidden; background: color-mix(in oklch, var(--color-base-content) 10%, transparent); }
 .kernel-rail-bar::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: var(--color-base-content);
   transition: transform .6s cubic-bezier(.16, 1, .3, 1); }
 .kernel-rail li.is-current .kernel-rail-bar::after { transform: scaleX(.42); background: var(--color-primary); animation: kernel-rail-think 2.4s ease-in-out infinite; }
 .kernel-rail li.is-done .kernel-rail-bar::after { transform: scaleX(1); }
 @keyframes kernel-rail-think { 0%, 100% { transform: scaleX(.18); } 50% { transform: scaleX(.72); } }
-.kernel-rail-label { font-size: .75rem; letter-spacing: .01em; color: color-mix(in oklch, var(--color-base-content) 40%, transparent); transition: color .3s ease; }
+.kernel-rail-label { font-size: .75rem; line-height: 1rem; letter-spacing: .01em; color: color-mix(in oklch, var(--color-base-content) 40%, transparent); transition: color .3s ease; }
 .kernel-rail li.is-current .kernel-rail-label { color: var(--color-base-content); font-weight: 600; }
 .kernel-rail li.is-done .kernel-rail-label { color: color-mix(in oklch, var(--color-base-content) 70%, transparent); }
 
