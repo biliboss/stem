@@ -15,6 +15,9 @@ agente ACP ──▶ <app>.ts     definição: telas, programas, schema, seed, p
    └──────▶ <app>.skv       linhas: o SurrealDB embutido só daquele app
 ```
 
+Um banco por app só vale quando as tools de fato do agente-produto gravam nele: hoje o pipi grava notas e contrato
+no `db.sqlite` do tenant, e o `agents.md` diz o que fecha isso.
+
 ## Muitas primitivas para compor
 
 O framework e o agente recebem primitivas pequenas, e um app é composição delas, nunca código que só ele tem.
