@@ -19,6 +19,7 @@ namespace View        Spec · Element · Action · Binding · Catalog · render 
 namespace Acp         Agent (spawn do claude-agent-acp por stdio) · Commands (caps · list · daemon)
 namespace Caddy       publish/unpublish <slug>.localhost pela admin API
 namespace Mcp         SystemPort · SystemMcp: /_mcp no transporte web-standard do SDK
+namespace Metrics     o que o trabalho CUSTOU, só aritmética: cycle · lead · turns · tool_calls · dólares
 class Memory          o SurrealDB embutido e a COSTURA: define() escreve definição, app() linha, query() o log
   namespace Memory    Match · Behavior · Program · Resolution · address() · jsonSafe()
 const Pulse           SSE, drafts, gates e phases; sobrevive ao `bun --hot` em globalThis
@@ -31,10 +32,26 @@ docs/                 os experimentos e as pesquisas; experiments/ tem os script
 ```
 
 ```
+just stem::self                   stem.localhost, o sistema que gerencia os OUTROS: banco em ~/.stem/system.skv
 cd apps/stem/.run/<slug> && bun ../../main.ts serve --new --slug <slug> --tools mcp
 bun --hot ../../main.ts serve …   Kernel e View mudam no reload sem reiniciar um design em curso
 claude mcp add --transport http --scope local system http://<slug>.localhost/_mcp
 ```
+
+## O agente tem UM lugar na tela, e é o canto inferior direito
+
+**O `#agent` empilha o que o agente está fazendo e o que ele pede do dono, sempre no mesmo canto.** Antes, a
+operação lia no canto inferior ESQUERDO enquanto o `✓ aceitar` ficava no direito, e numa página sem view ainda
+oferecia aceitar o que não existe. O `#working` virou só o véu; o dock fica ACIMA dele, nítido sobre o blur.
+
+- O aceitar some enquanto o agente trabalha, e não é desenhado quando a resolução foi `bootstrap` ou `designing` — nos dois a tela está em branco e não há versão para fechar.
+- A régua do estúdio divide o mesmo canto (`bottom: 1.5rem`), porque o aceitar está escondido enquanto ela existe.
+
+## A dobra abre no ESBOÇO
+
+**`Interpreter.GATE_FROM = 4`: entender, planejar e pensar a UX correm direto, e a primeira coisa que o dono
+julga é um DESENHO.** Ler três telas de prosa antes de qualquer forma é pedágio cobrado de quem pediu uma tela.
+As fases não paradas ainda são gravadas por `keep()`, senão replay a partir do esboço não teria em que se apoiar.
 
 ## A resolução, do mais barato ao mais caro
 
@@ -64,5 +81,6 @@ outra rota     capability estática → program promovido (20 ms) → learning �
 - **Safari sonda `apple-touch-icon*` sozinho**: rota que não é operação responde 204 antes de virar pedido ao agente.
 - **O Storybook (polished) quebra com `oklch`** no tema do manager: tela em branco. Hex ali.
 - **O Bun corta conexão ociosa em 10 s**: sem `idleTimeout: 0` no `Bun.serve`, o `/_events` e um `/_intent` de minutos morrem calados. Medido em 14/09: o SSE aberto por 14 s recebeu o `draft` emitido aos 12 s.
+- **O `claude-agent-acp` REPORTA custo**, num `sessionUpdate` de tipo `usage_update` com `used`, `size` e `cost: {amount, currency}` — e o que ele manda é o TOTAL CORRIDO da sessão, não o do turno. Por isso `turns()` guarda a linha de base na entrada e devolve a diferença; o `execution` passou a gravar `turns`, `tool_calls` e `cost_usd` ao lado do `duration_ms`, que era tudo o que sobrevivia.
 - **As ferramentas do MCP chamam o runtime em processo** (`hono.request`), não por HTTP: um design leva minutos, e o `fetch` do undici derrubava a resposta em 300 s.
 - **O `main.ts` não tem JSX** porque é `.ts`: o `h()` é chamado direto. O HTML saiu byte a byte igual ao do antigo `view.tsx` (123.933 bytes em quatro renders, 14/09).

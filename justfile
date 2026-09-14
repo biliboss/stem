@@ -2,6 +2,14 @@
 serve slug:
     bun ../../main.ts serve --new --no-open --slug {{slug}} --tools mcp
 
+# stem.localhost: o sistema que gerencia os OUTROS, e o banco dele mora fora do repo, em ~/.stem
+self:
+    #!/usr/bin/env bash
+    set -e
+    mkdir -p "$HOME/.stem"
+    cd "$HOME/.stem"
+    exec bun {{source_directory()}}/main.ts serve --no-open --slug stem --tools mcp --db "surrealkv://$HOME/.stem/system.skv"
+
 # the manual an agent reads to operate a Stem system over MCP, linked from the main checkout
 install:
     #!/usr/bin/env bash

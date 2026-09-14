@@ -45,13 +45,24 @@ export namespace Html {
  */
 export namespace Kernel {
   export const css = `/* kernel.css — the default world every system is born with. Shell inlines it; Storybook imports it. */
-#working { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none;
+/* The scrim, and nothing else: it says the page is not the owner's right now. A client's operation never takes it. */
+#working { position: fixed; inset: 0; z-index: 50; pointer-events: none;
   background: oklch(0% 0 0 / 0); backdrop-filter: blur(0); opacity: 0; transition: all .35s ease; }
 body.working #working { background: oklch(21% .012 257 / .22); backdrop-filter: blur(3px); opacity: 1; pointer-events: auto; }
-/* A client's operation is not the owner's gesture: the page stays readable, and a corner says what is being done. */
-body.working.operating #working { background: none; backdrop-filter: none; pointer-events: none; place-items: end start; padding: 1.5rem; }
-body.working.operating #working > span { max-width: 36rem; font-size: .875rem; }
-#working span { animation: breathe 1.6s ease-in-out infinite; }
+body.working.operating #working { background: none; backdrop-filter: none; opacity: 0; pointer-events: none; }
+/* The agent has ONE place on every screen, the lower right: what it is doing and what it asks of the owner stack in
+   the same column. Before this, the operation read at the lower left while ✓ aceitar sat at the lower right, and on a
+   page with no view yet that button offered to accept nothing. Above the scrim, so the dock stays sharp over the blur. */
+#agent { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 60; display: grid; justify-items: end; gap: .5rem; pointer-events: none; }
+#agent > * { pointer-events: auto; }
+#agent-doing { display: none; max-width: 32rem; align-items: center; gap: .75rem; font-size: .875rem;
+  border-radius: var(--radius-box); background: var(--color-base-100); color: var(--color-base-content); padding: .625rem .875rem;
+  box-shadow: 0 18px 44px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300); }
+body.working #agent-doing { display: flex; }
+/* The studio narrates on its own; and there is nothing to accept while the screen is still being made. */
+body.studio #agent-doing { display: none; }
+body.working #agent-accept { opacity: 0; pointer-events: none; }
+#agent-doing #working-what { animation: breathe 1.6s ease-in-out infinite; }
 @keyframes breathe { 50% { opacity: .45; } }
 form.htmx-request button[type=submit] { pointer-events: none; opacity: .6; }
 form.htmx-request button[type=submit]::after { content: " · pensando…"; }
@@ -254,9 +265,9 @@ body.editing [data-system-id].target { outline: 2px solid oklch(70% .2 250); }
    drafted     once a skeleton exists, the thought moves to the lower left and the blueprint takes the stage */
 body.studio #working { opacity: 0 !important; pointer-events: none !important; }
 .kernel-studio { position: fixed; inset: 0; pointer-events: none; z-index: 55; }
-/* The rail floats at the lower right, above ✓ aceitar: across the top it sat on the screen's own header, and on a dark
+/* The rail is the agent's corner too, the lower right: across the top it sat on the screen's own header, and on a dark
    screen its ink vanished. It carries its own surface, so it reads on any theme the view chose. */
-.kernel-rail { position: fixed; right: 1.5rem; bottom: 3.75rem; width: 15rem; margin: 0; list-style: none; display: grid;
+.kernel-rail { position: fixed; right: 1.5rem; bottom: 1.5rem; width: 15rem; margin: 0; list-style: none; display: grid;
   grid-template-columns: repeat(5, 1fr); gap: .25rem; padding: .625rem .75rem 1.75rem; border-radius: var(--radius-box);
   background: var(--color-base-100); color: var(--color-base-content);
   box-shadow: 0 18px 44px -20px oklch(21% .012 257 / .45), 0 0 0 1px var(--color-base-300);
@@ -307,8 +318,14 @@ body.studio.drafted #kernel-narration-text { font-size: .875rem; line-height: 1.
 body.studio.drafted { background-image: radial-gradient(color-mix(in oklch, var(--color-base-content) 12%, transparent) 1px, transparent 1px);
   background-size: 1.25rem 1.25rem; }
 .kernel-wireframe [data-system-id] { outline: 1px dashed color-mix(in oklch, var(--color-base-content) 24%, transparent); outline-offset: 0; }
-/* The outline shows where each element's box really ends; \`o\` hides it (kernel.js). */
-body.no-outline .kernel-wireframe [data-system-id] { outline: none; }
+/* THE OUTLINE MOTION (\`o\`, kernel.js): every component in the view draws its box and says its NAME. A screen made
+   of components nobody can name is a screen nobody can ask to change — this is what puts the catalog on a real page.
+   outline, never border, so no box moves; the label is drawn inside the corner and never takes a click. */
+body.outlined [data-system-type] { position: relative; outline: 1px solid color-mix(in oklch, var(--color-primary) 55%, transparent); outline-offset: -1px; }
+body.outlined [data-system-type]::before { content: attr(data-system-type); position: absolute; top: 0; left: 0; z-index: 40;
+  font-size: 9px; line-height: 1.5; letter-spacing: .02em; padding: 0 .25rem; border-radius: 0 0 .25rem 0;
+  background: var(--color-primary); color: var(--color-primary-content); pointer-events: none; }
+body.outlined [data-system-type]:hover { outline-color: var(--color-primary); }
 .kernel-wireframe [data-fresh] { outline-color: var(--color-primary); outline-style: solid; }
 .kernel-wireframe :is(.btn, .input, .select, .textarea, .checkbox, .toggle, .badge, .kernel-tag, img, .kernel-zoom, .kernel-code) {
   box-shadow: none !important; border-radius: .25rem !important; }
@@ -560,19 +577,19 @@ function dragFold() {
   });
 }
 
-// \`o\` outside a field shows or hides the sketch's outlines; the choice survives a reload.
-function outlineToggle() {
-  if (localStorage.getItem("kernel-outline") === "off") document.body.classList.add("no-outline");
+// \`o\` outside a field draws every component's box with its name. The choice survives a reload.
+function outlineMotion() {
+  if (localStorage.getItem("kernel-outline") === "on") document.body.classList.add("outlined");
   document.addEventListener("keydown", (e) => {
     if (e.key !== "o" || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
-    const off = document.body.classList.toggle("no-outline");
-    localStorage.setItem("kernel-outline", off ? "off" : "on");
+    const on = document.body.classList.toggle("outlined");
+    localStorage.setItem("kernel-outline", on ? "on" : "off");
   });
 }
 
 if (typeof document !== "undefined") {
   dragFold();
-  if (document.body) outlineToggle(); else document.addEventListener("DOMContentLoaded", outlineToggle);
+  if (document.body) outlineMotion(); else document.addEventListener("DOMContentLoaded", outlineMotion);
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => mount());
   else mount();
   document.addEventListener("htmx:afterSwap", (e) => mount(e.target));
@@ -849,7 +866,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
       const html = component(props, children, { id, action });
       // The address goes on the outermost tag, so edit mode can find the element behind any click.
       const fresh = draft?.fresh?.includes(id) ? ` data-fresh` : "";
-      return html.replace(/^<([a-z][a-z0-9]*)/, `<$1 data-system-id="${escape(id)}"${fresh}`);
+      return html.replace(/^<([a-z][a-z0-9]*)/, `<$1 data-system-id="${escape(id)}" data-system-type="${escape(String(el.type))}"${fresh}`);
     };
     return node(spec.root, { data, params });
   }
@@ -904,12 +921,13 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
                       h("button", { class: "btn btn-primary" }, "aplicar")),
                   h("form", { method: "dialog", class: "modal-backdrop" },
                       h("button", null, "fechar"))),
-              bootstrap || path.startsWith("/_") ? "" : h("button", { class: "btn btn-sm btn-ghost fixed bottom-4 right-4", "hx-post": "/_accept", "hx-vals": JSON.stringify({ path }), "hx-confirm": "Esta vers\u00E3o \u00E9 o que voc\u00EA queria?", title: "fecha a jornada e aprende com ela" }, "\u2713 aceitar"),
               h("script", { type: "module" }, Kernel.js),
-              h("div", { id: "working" },
-                  h("span", { class: "flex items-center gap-3 rounded-box bg-base-100 px-5 py-3 text-base shadow-[0_12px_40px_-12px_oklch(23%_.014_60/.35)]" },
+              h("div", { id: "working" }),
+              h("div", { id: "agent" },
+                  h("div", { id: "agent-doing" },
                       h("span", { class: "loading loading-dots loading-sm text-primary" }),
-                      h("span", { id: "working-what" }, "o agente est\u00E1 trabalhando"))),
+                      h("span", { id: "working-what" }, "o agente est\u00E1 trabalhando")),
+                  bootstrap || path.startsWith("/_") ? "" : h("button", { id: "agent-accept", class: "btn btn-sm btn-ghost", "hx-post": "/_accept", "hx-vals": JSON.stringify({ path }), "hx-confirm": "Esta vers\u00E3o \u00E9 o que voc\u00EA queria?", title: "fecha a jornada e aprende com ela" }, "\u2713 aceitar")),
               h("script", null, `
           // The server says when an agent works and when the system changed — from this page, another tab or /_mcp.
           const pulse = new EventSource('/_events');
@@ -1109,6 +1127,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
               { title: 'Apontar um elemento', hint: 'modo edição · ⌘.', run: () => document.body.classList.add('editing') },
               { title: 'Aceitar esta versão', hint: 'aprende com a jornada', run: () => post('/_accept', { path: PATH }) },
             ]),
+            { title: 'Contornar os componentes', hint: 'o · cada caixa com o nome dela', run: () => document.body.classList.toggle('outlined') },
             { title: 'Design system', hint: 'g d · nova aba', run: () => window.open('/_ds/', 'design-system') },
             { title: 'O que o sistema sabe', hint: '/_system', run: () => window.open('/_system', '_blank') },
           ];
@@ -1466,6 +1485,8 @@ export namespace Mcp {
     journey(path: string): Promise<unknown>;
     preferences(): Promise<unknown>;
     capabilities(): Promise<unknown>;
+    /** Cycle time, lead time, turns and dollars, over every agent run this system has made. */
+    metrics(): Promise<Metrics.Summary>;
     query(sql: string): Promise<unknown>;
     teach(scope: string, instruction: string): Promise<void>;
     /** Every taught scope with its instructions in order; the last one is what the runtime follows. */
@@ -1533,6 +1554,8 @@ How to interact, in this order:
         list: async () => ({ resources: (port.teachings ? await port.teachings() : []).map((t) => ({ uri: `system://teaching/${encodeURIComponent(t.scope)}`, name: t.scope, mimeType: "application/json" })) }),
       }), { description: "What one scope was taught; scope is URL-encoded, e.g. system://teaching/POST%20%2Fdeals%2F%7Bid%7D%2Ffields" },
         async (uri, { scope }) => json(uri.href, (port.teachings ? await port.teachings() : []).find((t) => t.scope === decodeURIComponent(String(scope))) ?? null));
+      mcp.registerResource("metrics", "system://metrics", { description: "What this system's work cost: runs, turns, tool calls, dollars, and the cycle and lead time spreads in ms" },
+        async (uri) => json(uri.href, await port.metrics()));
       mcp.registerResource("capabilities", "system://capabilities", { description: "Behaviors already compiled: no model runs for these" },
         async (uri) => json(uri.href, await port.capabilities()));
 
@@ -1674,9 +1697,24 @@ export class Memory {
     await this.query("UPDATE $op MERGE { status: 'failed', error: $error }", { op, error });
   }
 
-  async execution(op: RecordId, agent: string, transcript: string[], ms: number) {
+  /** What one agent run cost: the clock, the round trips and the dollars. Metrics reads only these fields. */
+  async execution(op: RecordId, agent: string, transcript: string[], m: { ms: number; turns: number; tool_calls: number; cost_usd: number }) {
     await this.query("CREATE execution CONTENT $e",
-      { e: { operation: op, agent, transcript, duration_ms: ms, created_at: new Date() } });
+      { e: { operation: op, agent, transcript, duration_ms: m.ms, turns: m.turns, tool_calls: m.tool_calls,
+        cost_usd: m.cost_usd, created_at: new Date() } });
+  }
+
+  /**
+   * The rows Metrics eats: one per agent run, carrying the operation's own arrival time. Two reads joined here and
+   * not in SurrealQL — `SELECT operation.created_at AS asked_at` came back empty and every lead time read as zero,
+   * which is a silent wrong number, the worst kind. Stitching is this class's job; the arithmetic is Metrics'.
+   */
+  async runs(): Promise<Metrics.Run[]> {
+    const [runs] = await this.query<[{ operation?: RecordId; ran_at?: unknown; duration_ms?: unknown; turns?: unknown; tool_calls?: unknown; cost_usd?: unknown }[]]>(
+      "SELECT operation, created_at AS ran_at, duration_ms, turns, tool_calls, cost_usd FROM execution");
+    const [asked] = await this.query<[{ id: RecordId; created_at: unknown }[]]>("SELECT id, created_at FROM operation");
+    const arrived = new Map((asked ?? []).map((o) => [String(o.id), o.created_at]));
+    return (runs ?? []).map((r) => ({ ...r, asked_at: r.operation ? arrived.get(String(r.operation)) : undefined }));
   }
 
   /** The agent's query into application state; the operational tables stay out of reach. */
@@ -1934,6 +1972,7 @@ export class Memory {
       journey: (path) => this.journey(path),
       preferences: () => this.preferences(),
       capabilities: () => this.capabilities(),
+      metrics: async () => Metrics.summarize(await this.runs()),
       query: (sql) => this.app(sql),
       teach: (scope, instruction) => this.teach(scope, instruction),
       teachings: () => this.taught(),
@@ -1983,6 +2022,67 @@ export namespace Memory {
     if (v === undefined) return null;
     return JSON.parse(JSON.stringify(v, (_k, x) => (x instanceof RecordId ? String(x) : x)));
   }
+}
+
+/**
+ * What the work COST, as arithmetic over rows and nothing else — no database, no clock, no I/O. The HTTP route, the
+ * MCP resource and a test all read the same function, and a sibling system's numbers summarise the same way: hand
+ * over its rows. This is the shape every capability in this file is meant to have; the ports only carry it.
+ */
+export namespace Metrics {
+  /** One agent run: when the request landed, when the run ended, and what it spent. */
+  export type Run = { asked_at?: unknown; ran_at?: unknown; duration_ms?: unknown; turns?: unknown; tool_calls?: unknown; cost_usd?: unknown };
+  export type Spread = { p50: number; p95: number; max: number; total: number };
+  export type Summary = { runs: number; turns: number; tool_calls: number; cost_usd: number; cycle_ms: Spread; lead_ms: Spread };
+
+  export function summarize(runs: Run[]): Summary {
+    return {
+      runs: runs.length,
+      turns: total(runs.map((r) => n(r.turns))),
+      tool_calls: total(runs.map((r) => n(r.tool_calls))),
+      cost_usd: round(total(runs.map((r) => n(r.cost_usd))), 6),
+      cycle_ms: spread(runs.map(cycle)),
+      lead_ms: spread(runs.map(lead)),
+    };
+  }
+
+  /** Cycle time: the agent's own time on one request. */
+  export function cycle(r: Run) { return n(r.duration_ms); }
+
+  /**
+   * Lead time: everything the caller waited, from the request landing to the answer leaving. `ran_at` stamps the END
+   * of a run, so a row whose clocks disagree is DROPPED, never clamped to zero — a skewed row must not read as an
+   * instant answer.
+   */
+  export function lead(r: Run) {
+    const asked = at(r.asked_at), ended = at(r.ran_at);
+    if (asked === undefined || ended === undefined || ended < asked) return undefined;
+    return ended - asked;
+  }
+
+  export function spread(values: (number | undefined)[]): Spread {
+    const sorted = values.filter((v): v is number => v !== undefined).sort((a, b) => a - b);
+    return { p50: percentile(sorted, 50), p95: percentile(sorted, 95), max: sorted.at(-1) ?? 0, total: total(sorted) };
+  }
+
+  /** Nearest-rank, so a single sample is its own p95 and an empty list is 0 rather than NaN. */
+  export function percentile(sorted: number[], p: number) {
+    if (!sorted.length) return 0;
+    return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]!;
+  }
+
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  /** SurrealDB hands a datetime back as its OWN object, neither a Date nor a string: `instanceof Date` alone read
+      every lead time as zero. Anything whose text parses as a date is a date. */
+  const at = (v: unknown) => {
+    if (v instanceof Date) return v.getTime();
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (v === null || v === undefined) return undefined;
+    const t = Date.parse(String(v));
+    return Number.isFinite(t) ? t : undefined;
+  };
+  const total = (values: (number | undefined)[]) => values.reduce<number>((a, v) => a + (v ?? 0), 0);
+  const round = (v: number, places: number) => Number(v.toFixed(places));
 }
 
 /** What any open page hears: the agent started, the agent stopped, the system changed shape. */
@@ -2046,6 +2146,8 @@ export class Interpreter {
   #cwd: string;
   #mcp?: string;
   toolCalls = 0;
+  /** The session's total cost in USD, as the agent last reported it. */
+  cost = new Map<string, number>();
   /** Reply text per session: fresh sessions run concurrently, and one buffer would mix their answers. */
   #text = new Map<string, string>();
   #queue: Promise<unknown> = Promise.resolve();
@@ -2085,6 +2187,12 @@ Omit "program" when the answer needs judgement a query cannot make.`;
 
   /** How many query round trips one operation may take. */
   static MAX_TURNS = 8;
+  /**
+   * An interactive design waits from this phase on. Understanding, plan and UX run through and stay readable on the
+   * rail, but the first thing the owner is asked about is a DRAWING: a request that deserves a screen starts at the
+   * sketch, because three screens of prose before any shape is a toll on the person who asked for a screen.
+   */
+  static GATE_FROM = 4;
 
   static async start(agent: string, mcpUrl?: string) {
     let self: Interpreter | undefined;
@@ -2094,6 +2202,12 @@ Omit "program" when the answer needs judgement a query cannot make.`;
           self.#text.set(sessionId, (self.#text.get(sessionId) ?? "") + update.content.text);
         }
         if (update.sessionUpdate === "tool_call" && self) self.toolCalls++;
+        // The ACP agent reports the session's RUNNING TOTAL after each assistant message. Kept per session, so a
+        // task's cost is the difference across its own turns; without this nothing in this file knows what work costs.
+        if (update.sessionUpdate === "usage_update" && self) {
+          const amount = Number((update as { cost?: { amount?: number } }).cost?.amount ?? NaN);
+          if (Number.isFinite(amount)) self.cost.set(sessionId, amount);
+        }
       },
       // Only the system's own MCP may run; every built-in tool (Bash, Write, …) is refused.
       async requestPermission({ options, toolCall }) {
@@ -2128,7 +2242,8 @@ Omit "program" when the answer needs judgement a query cannot make.`;
   /** Prompts are serialized: one session answers one operation at a time. */
   resolve(operation: object, execute: (sql: string) => Promise<unknown>) {
     return this.run(`${Interpreter.PROMPT}\n\nOPERATION ${JSON.stringify(operation)}`, execute) as Promise<{
-      transcript: string[]; ms: number; answer: { status: number; body: unknown; content_type?: string; side_effects: boolean; reusable: boolean } }>;
+      transcript: string[]; ms: number; turns: number; tool_calls: number; cost_usd: number;
+      answer: { status: number; body: unknown; content_type?: string; side_effects: boolean; reusable: boolean } }>;
   }
 
   static DESIGN = `You design views for a backend that has no code. Views are data, not HTML.
@@ -2186,7 +2301,7 @@ what is not new — an entity or field that already exists and changes gets "(ex
   design(task: object, execute: (sql: string) => Promise<unknown>, phasedPath?: string, interactive = false,
       replay?: { from: number; phases: { step: number; name: string; text: string; view?: View.Spec }[] }) {
     return this.run(`${Interpreter.DESIGN}\n\nTASK ${JSON.stringify(task)}`, execute, true, Interpreter.checkView(execute), phasedPath, interactive, replay) as Promise<{
-      transcript: string[]; ms: number; turns: number; tool_calls: number; answer: { view?: View.Spec; tokens?: Record<string, string>; programs?: (Memory.Program & { method: string })[] } }>;
+      transcript: string[]; ms: number; turns: number; tool_calls: number; cost_usd: number; answer: { view?: View.Spec; tokens?: Record<string, string>; programs?: (Memory.Program & { method: string })[] } }>;
   }
 
   static EDIT = `You EDIT a view that already works for its owner. You do not redesign it.
@@ -2292,8 +2407,13 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
               Pulse.drafts.set(phasedPath, { spec: answer.view as View.Spec, previous });
               Pulse.emit("draft", { path: phasedPath, note: text || phase.name });
             }
-            Pulse.emit("phase", { path: phasedPath, name: phase.name, step: i + 1, total: Interpreter.PHASES.length + 1, text, done: true, awaiting: interactive });
-            if (!interactive) break;
+            const gated = interactive && i + 1 >= Interpreter.GATE_FROM;
+            Pulse.emit("phase", { path: phasedPath, name: phase.name, step: i + 1, total: Interpreter.PHASES.length + 1, text, done: true, awaiting: gated });
+            if (!gated) {
+              // Ungated phases still count as lived, or replaying from the sketch would have nothing to stand on.
+              if (interactive) await Interpreter.keep?.({ path: phasedPath, intent: intentText, step: i + 1, name: phase.name, text, view: answer.view });
+              break;
+            }
             const gate = await Pulse.wait(phasedPath);
             if (gate.decision === "abort") throw new Error("design restarted from another phase");
             if (gate.decision === "continue") {
@@ -2367,13 +2487,15 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
         ? `${first}\n\nTOOLS: this session has the "system" MCP server. Do NOT reply with {"query"}: read its resources and use its tools, then reply with the final JSON only.`
         : first;
       const calls = this.toolCalls;
+      const spent = this.cost.get(session) ?? 0;
       for (let turn = 0; turn < Interpreter.MAX_TURNS; turn++) {
         const reply = Interpreter.parse(await this.ask(session, message));
         transcript.push(message, JSON.stringify(reply));
         if (typeof reply.query !== "string") {
           const problem = check && turn < Interpreter.MAX_TURNS - 1 ? await check(reply) : undefined;
           if (problem) { console.error("[design] rejected:", problem); message = problem; continue; }
-          return { transcript, ms: Date.now() - started, turns: turn + 1, tool_calls: this.toolCalls - calls, answer: reply as any };
+          return { transcript, ms: Date.now() - started, turns: turn + 1, tool_calls: this.toolCalls - calls,
+            cost_usd: Math.max(0, (this.cost.get(session) ?? 0) - spent), answer: reply as any };
         }
         const result = await execute(reply.query).catch((e) => ({ error: String(e) }));
         message = `RESULT ${JSON.stringify(result)}`;
@@ -2461,6 +2583,7 @@ export namespace Server {
 
     hono.onError((e) => send(500, { error: String(e) }));
     hono.all("/_system", async () => send(200, await memory.system()));
+    hono.get("/_metrics", async () => send(200, Metrics.summarize(await memory.runs())));
     hono.post("/_teach", async (c) => {
       const { scope, instruction } = (await readBody(c.req.raw)) as { scope: string; instruction: string };
       await memory.teach(scope, instruction);
@@ -2548,7 +2671,7 @@ export namespace Server {
       const body = (Object.keys(errors).length
         ? `<div role="alert" class="alert alert-error m-4 text-sm">a view ${path} tem query quebrada: ${Object.keys(errors).join(", ")}</div>` : "")
         + View.render(spec, data, params);
-      return send(200, View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), bootstrap: by === "bootstrap" }), HTML, { "x-resolved-by": by });
+      return send(200, View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), bootstrap: by === "bootstrap" || by === "designing" }), HTML, { "x-resolved-by": by });
     }
 
     async function intent(body: { intent?: string; path?: string; preferences?: string; interactive?: boolean; from?: number }) {
@@ -2667,9 +2790,9 @@ export namespace Server {
         .filter(([, v]) => Array.isArray(v)).map(([k, v]) => `${(v as unknown[]).length} ${k}`).join(" \u00B7 ");
       const meaning = teachings.at(-1)?.split(/(?<=[.:])\s/)[0] ?? "rota que ningu\u00E9m ensinou: o agente vai deduzir";
       Pulse.emit("operation", { method: match.method, path: match.path, size, meaning: meaning.slice(0, 160) });
-      const { transcript, ms, answer } = await interpreter.resolve(
+      const { transcript, ms, turns, tool_calls, cost_usd, answer } = await interpreter.resolve(
         { ...match, accept, query, body, teachings, screens: await memory.contracts() }, (sql) => memory.app(sql));
-      await memory.execution(op, interpreter.agent, transcript, ms);
+      await memory.execution(op, interpreter.agent, transcript, { ms, turns, tool_calls, cost_usd });
       const written = (answer as { program?: Memory.Program }).program;
       if (written?.sql && written.route && Memory.routeMatch(written.route, match.path)) {
         await memory.propose(op, match.method, written);
