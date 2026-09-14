@@ -134,6 +134,34 @@ body:has(.kernel-thread) .kernel-page { padding: 0; }
 .kernel-bubble-time { float: right; position: relative; top: .3125rem; margin-left: .75rem; font-size: .6875rem; line-height: 1; color: var(--wa-muted); }
 .is-mine .kernel-bubble-time { color: rgb(233 237 239 / .6); }
 @media (max-width: 40rem) { .kernel-bubble { max-width: 86%; } }
+.kernel-chips { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem; margin: .375rem 0 0; padding: .375rem 0 0;
+  border-top: 1px solid rgb(255 255 255 / .07); }
+.kernel-chips + .kernel-chips { border-top: 0; padding-top: 0; margin-top: .25rem; }
+.kernel-chip { padding: .0625rem .375rem; border-radius: .25rem; font-size: .6875rem; line-height: 1.5; font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.is-detected .kernel-chip { background: rgb(33 192 99 / .16); color: #7ee2a8; }
+.is-missed .kernel-chip { background: rgb(241 92 109 / .16); color: #f5a3ad; }
+.is-missed .kernel-chip::before { content: "faltou "; font-family: -apple-system, BlinkMacSystemFont, sans-serif; opacity: .8; }
+
+/* Desk: the conversation on the left and, on the right, what it built. Same dark world as the Thread. */
+.kernel-desk { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); background: #161717; }
+.kernel-desk .kernel-thread { position: relative; inset: auto; min-height: 0; height: 100vh; }
+.kernel-aside { display: grid; grid-template-rows: auto 1fr; min-height: 0; height: 100vh; background: #111313; color: #e9edef;
+  border-left: 1px solid rgb(255 255 255 / .06); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif; }
+.kernel-aside-head { display: flex; flex-direction: column; justify-content: center; height: 3.75rem; padding: 0 1.25rem; background: #1f2121;
+  border-bottom: 1px solid rgb(255 255 255 / .06); }
+.kernel-aside-title { margin: 0; font-size: 1rem; font-weight: 500; }
+.kernel-aside-subtitle { margin: 0; font-size: .8125rem; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kernel-aside-body { overflow-y: auto; padding: .5rem 1.25rem 2rem; scrollbar-width: thin; scrollbar-color: #3b3d3d transparent; }
+.kernel-group { padding: 1rem 0 .5rem; border-bottom: 1px solid rgb(255 255 255 / .06); }
+.kernel-group-title { display: flex; align-items: baseline; margin: 0 0 .5rem; font-size: .75rem; font-weight: 600; letter-spacing: .02em; color: #8696a0; }
+.kernel-group-meta { margin-left: auto; font-weight: 450; font-variant-numeric: tabular-nums; }
+.kernel-field { display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr); gap: .75rem; padding: .25rem 0; font-size: .8125rem; line-height: 1.4; }
+.kernel-field-label { color: #8696a0; overflow-wrap: anywhere; }
+.kernel-field-value { overflow-wrap: anywhere; }
+.kernel-field.is-empty .kernel-field-value { color: #54616a; }
+.kernel-field.is-missed .kernel-field-value { color: #f5a3ad; }
+@media (max-width: 56rem) { .kernel-desk { grid-template-columns: 1fr; } .kernel-aside { display: none; } }
 .kernel-muted { color: color-mix(in oklch, var(--color-base-content) 62%, transparent); }
 .kernel-meta { margin-left: auto; padding-left: 1rem; white-space: nowrap; font-size: .875rem;
   color: color-mix(in oklch, var(--color-base-content) 55%, transparent); font-variant-numeric: tabular-nums; }
@@ -661,8 +689,34 @@ export namespace View {
                 p.cost != null && p.cost !== "" && h("span", { class: "kernel-bubble-cost" }, escape(String(p.cost)))),
             kind === "media" && !text && h("p", { class: "kernel-bubble-kind" }, Icon.file, escape(String(p.notice || "mídia"))),
             h("p", { class: "kernel-bubble-text" }, escape(text),
-                h("span", { class: "kernel-bubble-time" }, escape(String(p.time ?? ""))))); }) as Render,
+                h("span", { class: "kernel-bubble-time" }, escape(String(p.time ?? "")))),
+            chips(p.detected, "is-detected", "detectado") + chips(p.missed, "is-missed", "deveria ter detectado")); }) as Render,
+      /** Two panes: the first child (usually a Thread) and a side panel that reads what the conversation built. */
+      Desk: ((_p, c) => h("div", { class: "kernel-desk" }, c)) as Render,
+      /** The side of a Desk: a title, one line of state, and blocks of fields. */
+      Aside: ((p, c) => h("aside", { class: "kernel-aside" },
+          h("header", { class: "kernel-aside-head" },
+              h("h2", { class: "kernel-aside-title" }, escape(String(p.title ?? ""))),
+              p.subtitle && h("p", { class: "kernel-aside-subtitle" }, escape(String(p.subtitle)))),
+          h("div", { class: "kernel-aside-body" }, c))) as Render,
+      /** One field of a record: its label, the value or an empty mark, and whether it is still owed. */
+      Field: ((p) => h("div", { class: `kernel-field ${p.value == null || p.value === "" ? (p.expected ? "is-missed" : "is-empty") : "is-filled"}` },
+          h("span", { class: "kernel-field-label" }, escape(String(p.label ?? ""))),
+          h("span", { class: "kernel-field-value" }, p.value == null || p.value === "" ? (p.expected ? "faltou detectar" : "\u2014") : escape(String(p.value))))) as Render,
+      /** A titled group of Fields inside an Aside. */
+      Group: ((p, c) => h("section", { class: "kernel-group" },
+          h("h3", { class: "kernel-group-title" }, escape(String(p.title ?? "")),
+              p.meta != null && p.meta !== "" && h("span", { class: "kernel-group-meta" }, escape(String(p.meta)))),
+          c)) as Render,
     };
+
+    /** Field paths under a bubble; a list of strings, or of {field, value}. */
+    function chips(list: unknown, tone: string, label: string): string {
+      const items = (Array.isArray(list) ? list : []).map((x: any) => typeof x === "string" ? { field: x } : x).filter((x: any) => x?.field);
+      if (!items.length) return "";
+      return h("ul", { class: `kernel-chips ${tone}`, "aria-label": label },
+          items.map((x: any) => h("li", { class: "kernel-chip", title: x.value != null ? `${x.field}: ${x.value}` : x.field }, escape(String(x.field)))));
+    }
 
     /** Drawn icons, one stroke weight, for the few places a glyph carries meaning. */
     const Icon = {
@@ -699,7 +753,9 @@ Components and props:
   Code{code,lang} (with copy) Markdown{text} (long prose the owner wrote or asked for)
   Split (app shell: 1st child Sidebar, then content) Sidebar{title} (children: Link/Heading) Link{label,href,active,meta,dot}
   Thread{title,subtitle} (a conversation, full screen, messaging-app style; children: Bubble, usually one repeated, oldest first)
-  Bubble{text,time,mine,author,kind:"audio"|"media",audio (playable url or data: URI of the original),cost (text, e.g. "US$ 0,0002"),notice}
+  Bubble{text,time,mine,author,kind:"audio"|"media",audio (playable url or data: URI of the original),cost (text, e.g. "US$ 0,0002"),notice,detected:[field],missed:[field]} (detected/missed: field paths shown as chips under the text, green and red)
+  Desk (two panes, full screen: 1st child a Thread, 2nd child an Aside) Aside{title,subtitle} (children: Group) Group{title,meta} (children: Field)
+  Field{label,value,expected} (value empty + expected true = a field the conversation said but nobody recorded)
   Page{title,wide} (wide for app shells) Tag{text,color} (ONE label chip; color = tone name or CSS color; several labels = a repeat over them) Select{name,label,options:[{value,label}],value}
   Checkbox{checked}+action  List{empty}  Row (a list item; usually the repeated child)
 tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any action the page re-renders itself.`;

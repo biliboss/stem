@@ -41,3 +41,19 @@ numa fila.
 - O modelo saiu de uma medição no mesmo dia: seis modelos com áudio contra a nota real. O Flash Lite foi o único que acertou a transcrição inteira pelo menor preço (US$ 0,00022 com interpretação; US$ 0,00013 só transcrevendo). DeepSeek Flash e GLM Flash não aceitam áudio.
 - Mil minutos de áudio dela custam menos de um dólar.
 - Tirada às 11:28 em `viacorretor.localhost`.
+
+## 03 · O contrato se montando ao lado da conversa, e o erro que ninguém tinha visto
+
+![A conversa com os campos detectados e o contrato em construção à direita](03-contrato-em-construcao-ao-lado-da-conversa.jpg)
+
+A tela virou mesa. À esquerda, a conversa; embaixo de cada mensagem da Glaucilene, em verde, o campo que ela fez a
+Mel gravar — só o que aquela mensagem mudou —, e em vermelho o que ela trouxe e ninguém gravou. À direita, o
+contrato em construção, montado das seis revisões que a Mel salvou: um bloco por comprador, "7 de 9", e o que falta.
+
+O take vale pelo que o painel achou sozinho: os e-mails estão trocados. O do Comprador 1 é o do Vamberto e o do
+Comprador 2 é o da Silvia. Na conversa ninguém percebeu; lado a lado, salta aos olhos.
+
+- De onde vem cada coisa: as revisões e as chamadas `record_field` saem das sessões da Mel no pipi; o "deveria ter detectado" é o `gemini-2.5-flash` lendo as mesmas mensagens (US$ 0,0014 por leitura).
+- A tela foi pedida ao agente do Stem pelo MCP, com três primitivas novas: `Desk`, `Aside` e `Field`.
+- Uma mensagem nova da Glaucilene refaz o retrato do contrato, no máximo uma vez por minuto.
+- Tirada às 13:40 em `viacorretor.localhost`.
