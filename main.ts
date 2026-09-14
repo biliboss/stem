@@ -266,7 +266,12 @@ a { text-underline-offset: .2em; }
 .kernel-link:hover { background: var(--color-base-200); }
 .kernel-link.is-active { background: var(--color-base-200); font-weight: 600; }
 .kernel-link .kernel-meta { padding-left: .5rem; }
-.kernel-dot { width: .5rem; height: .5rem; border-radius: 999px; flex: none; }
+/* A command, a path, an id: measurement, not costume, and no box. Code carries a language label and a copy button,
+   which is the right weight for a block and far too much for one line at the foot of a panel. */
+.kernel-mono { max-width: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8125rem; line-height: 1.6;
+  overflow-x: auto; white-space: pre; scrollbar-width: thin; }
+.kernel-dot { width: .5rem; height: .5rem; border-radius: 999px; flex: none; background: var(--dot, currentColor); }
+.kernel-dot.is-empty { background: none; box-shadow: inset 0 0 0 1.5px color-mix(in oklch, currentColor 45%, transparent); }
 .kernel-tag { --tag: var(--color-base-content); display: inline-flex; align-items: center; height: 1.375rem; padding: 0 .5rem;
   border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap;
   color: color-mix(in oklch, var(--tag) 85%, black); background: color-mix(in oklch, var(--tag) 14%, transparent); }
@@ -683,10 +688,15 @@ export namespace View {
           p.title && h("p", { class: "kernel-sidebar-title" }, escape(p.title)),
           h("nav", { class: "flex flex-col gap-0.5" }, c))) as Render,
       Link: ((p) => h("a", { class: `kernel-link ${p.active ? "is-active" : ""}`, href: p.href, "aria-current": p.active ? "page" : undefined },
-          p.dot && h("span", { class: "kernel-dot", style: `background:${escape(String(p.dot))}` }),
+          // The dot ALWAYS holds its column once asked for: rendering nothing for a false dot shifted that row's
+          // label 18px left, and a list where only some items are marked read as a ragged indent instead of a state.
+          // true = filled in the current ink · false = an empty ring · a tone name or any CSS colour = filled in it.
+          p.dot !== undefined && p.dot !== null && p.dot !== "" &&
+            h("span", { class: `kernel-dot${p.dot === false ? " is-empty" : ""}`, style: dotTone(p.dot) }),
           h("span", { class: "truncate" }, escape(String(p.label ?? ""))),
           p.meta != null && p.meta !== "" && h("span", { class: "kernel-meta" }, escape(String(p.meta))))) as Render,
       // color is a tone name (primary, error, success…) or any CSS color; agents reach for tone names first.
+      // (dotTone is defined below, beside the catalog, for the same reason.)
       Tag: ((p) => { const c = String(p.color ?? ""); const tone = /^(primary|secondary|accent|neutral|info|success|warning|error)$/.test(c);
         return h("span", { class: "kernel-tag", style: c ? `--tag:${tone ? `var(--color-${c})` : escape(c)}` : undefined }, escape(String(p.text ?? ""))); }) as Render,
       Select: ((p) => h("label", { class: "flex flex-col gap-1" },
@@ -699,7 +709,7 @@ export namespace View {
       Heading: ((p) => h("h2", { class: "kernel-heading" }, escape(String(p.text ?? "")))) as Render,
       Text: ((p) => p.meta
         ? h("span", { class: "kernel-meta" }, escape(String(p.text ?? "")))
-        : h("p", { class: `max-w-[65ch] ${p.muted ? "kernel-muted" : ""}`, style: p.strike ? "text-decoration:line-through;text-decoration-thickness:1px" : undefined }, escape(String(p.text ?? "")))) as Render,
+        : h("p", { class: `max-w-[65ch] ${p.muted ? "kernel-muted" : ""}${p.mono ? " kernel-mono" : ""}`, style: p.strike ? "text-decoration:line-through;text-decoration-thickness:1px" : undefined }, escape(String(p.text ?? "")))) as Render,
       Badge: ((p) => h("span", { class: `badge badge-${p.tone ?? "neutral"}` }, escape(String(p.text ?? "")))) as Render,
       Stat: ((p) => h("div", { class: "flex flex-col gap-1" },
           h("span", { class: "text-sm kernel-muted" }, escape(String(p.label ?? ""))),
@@ -813,7 +823,14 @@ export namespace View {
     }
 
     /** What the agent reads to write a spec. Kept next to the components so they cannot drift. */
-    export const TOKENS = `Design tokens are DaisyUI 5 CSS variables, e.g. {"--color-primary":"oklch(65% .2 250)",
+    /** A dot's fill: true takes the text's own ink, a tone name takes that token, anything else is a raw CSS colour. */
+  function dotTone(dot: unknown): string | undefined {
+    if (dot === true || dot === false) return undefined;
+    const c = String(dot);
+    return `--dot:${/^(primary|secondary|accent|neutral|info|success|warning|error)$/.test(c) ? `var(--color-${c})` : escape(c)}`;
+  }
+
+  export const TOKENS = `Design tokens are DaisyUI 5 CSS variables, e.g. {"--color-primary":"oklch(65% .2 250)",
 "--color-base-100":"…","--radius-box":"0.25rem","--radius-field":"0.25rem","--size-field":"0.22rem","--border":"1px"}.
 A change like "more compact" or "less rounded" is a token change, not a view change.`;
 
@@ -827,12 +844,12 @@ A view may serve a ROUTE TEMPLATE: return {"view", "path": "/notebooks/{id}"}; i
 Every "data" query must run as written: SurrealQL ORDER BY fields must be in the SELECT list, and record ids come back as "table:id".
 Bindings in props, action.path and action.data: {"$item":"title"} · {"$data":"/todos"} · {"$count":{"$data":"/todos"}} · {"$not":…} · "text {$item.id}".
 Components and props:
-  Page{title} Stack{direction:"row"|"col",gap} Card{title} Heading{text} Text{text,muted,strike,meta} (meta: a secondary fact of a row — date, count, status — small, muted, pushed to the row's end) Badge{text,tone}
+  Page{title} Stack{direction:"row"|"col",gap} Card{title} Heading{text} Text{text,muted,strike,meta,mono} (meta: a secondary fact of a row — date, count, status — small, muted, pushed to the row's end) (mono: ONE line that is a command, a path or an id, in the monospace face and no box — Code is for a block with its language and its copy button, and it is too heavy for a footer) Badge{text,tone}
   Stat{label,value} Form{inline}+action (children inputs + a submit Button; input fields are sent automatically as body.data — never repeat them in action.data)
   Input{name,label,placeholder,required,inputType} Textarea{name,label,rows} Button{label,tone,size:"sm",submit}+action
   Mermaid{code,caption} (a diagram, zoomable) Image{src,alt,caption} (click opens full screen, zoomable)
   Code{code,lang} (with copy) Markdown{text} (long prose the owner wrote or asked for)
-  Split (app shell: 1st child Sidebar, then content) Sidebar{title} (children: Link/Heading) Link{label,href,active,meta,dot}
+  Split (app shell: 1st child Sidebar, then content) Sidebar{title} (children: Link/Heading) Link{label,href,active,meta,dot: true (cheio) | false (vazado, e a coluna do ponto continua lá) | tom ou cor}
   Thread{title,subtitle} (a conversation, full screen, messaging-app style; children: Bubble, usually one repeated, oldest first)
   Bubble{text,time,mine,author,kind:"audio"|"media",audio (playable url or data: URI of the original),cost (text, e.g. "US$ 0,0002"),notice,document (a /_media/ path to a PDF or image, opens in a popup),documentName,detected:[field],missed:[field]} (audio and document take /_media/ paths from the media tool, not bytes) (detected/missed: field paths shown as chips under the text, green and red)
   Desk (two panes, full screen: 1st child a Thread, 2nd child an Aside) Aside{title,subtitle} (children: Group) Group{title,meta} (children: Field)
