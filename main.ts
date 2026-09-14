@@ -138,7 +138,7 @@ body:has(.kernel-thread) .kernel-page { padding: 0; }
   border-radius: .375rem; background: rgb(0 0 0 / .22); color: inherit; font-size: .8125rem; text-align: left; cursor: zoom-in; }
 .kernel-bubble-doc:hover { background: rgb(0 0 0 / .32); }
 .kernel-bubble-doc:focus-visible { outline: 2px solid #21c063; outline-offset: 2px; }
-.kernel-preview { width: min(56rem, 94vw); height: 92vh; max-width: none; max-height: none; padding: 0; border: 0; border-radius: .75rem;
+.kernel-preview { width: min(56rem, 94vw); height: 92vh; max-width: none; max-height: none; margin: auto; padding: 0; border: 0; border-radius: .75rem;
   background: #111313; color: #e9edef; overflow: hidden; box-shadow: 0 40px 80px -30px rgb(0 0 0 / .6); }
 .kernel-preview::backdrop { background: rgb(0 0 0 / .62); backdrop-filter: blur(2px); }
 .kernel-preview header { display: flex; align-items: center; gap: .75rem; height: 3rem; padding: 0 .75rem 0 1rem; border-bottom: 1px solid rgb(255 255 255 / .08); font-size: .875rem; }
