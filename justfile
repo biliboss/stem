@@ -1,14 +1,15 @@
-# a Stem system for the current directory: `cd apps/stem/.run/<slug> && just --justfile ../../justfile serve <slug>`
-serve slug:
-    bun ../../main.ts serve --new --no-open --slug {{slug}} --tools mcp
+# a Stem system for the current directory: `cd apps/stem/.run/<slug> && just --justfile ../../justfile serve <slug> mukutu`
+# account (personal|mukutu) diz qual assinatura Claude paga o agente — o just exige, como o CLI
+serve slug account:
+    bun ../../main.ts serve --new --no-open --slug {{slug}} --tools mcp --account {{account}}
 
 # stem.localhost: o sistema que gerencia os OUTROS, e o banco dele mora fora do repo, em ~/.stem
-self:
+self account:
     #!/usr/bin/env bash
     set -e
     mkdir -p "$HOME/.stem"
     cd "$HOME/.stem"
-    exec bun {{source_directory()}}/main.ts serve --no-open --slug stem --tools mcp --db "surrealkv://$HOME/.stem/system.skv"
+    exec bun {{source_directory()}}/main.ts serve --no-open --slug stem --tools mcp --account {{account}} --db "surrealkv://$HOME/.stem/system.skv"
 
 # the manual an agent reads to operate a Stem system over MCP, linked from the main checkout
 install:

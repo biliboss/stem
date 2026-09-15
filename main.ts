@@ -3,8 +3,8 @@
 // stem — a system that starts blank. One process, one embedded database and one ACP agent: every request becomes
 // an operation, a known capability answers it without a model, anything else goes to the agent, and what repeats
 // crystallizes into something that runs without one. The screen, the backend and the design are born from use.
-//   bun main.ts serve [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
-//   bun main.ts acp caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
+//   bun main.ts serve --account personal|mukutu [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+//   bun main.ts acp --account personal|mukutu caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 //   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp
 //   POST /_intent · /_feedback · /_accept · /_judge · GET text/html → a view · anything else → an operation
 //
@@ -1212,12 +1212,47 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
 
 /** The ACP client: Agent is how the runtime reaches claude-agent-acp over stdio, Commands the CLI around it. */
 export namespace Acp {
+  /** Which Claude subscription pays for the agent. There is no default on purpose: the bill lands on a company
+   *  nobody chose, and it only shows up on the invoice. `personal` is the DEFAULT config dir — which is NOT
+   *  `~/.claude`, a third and stale profile — so it UNSETS the variable a parent session may already carry. */
+  export namespace Account {
+    export const DIRS: Record<string, string | undefined> = {
+      personal: undefined,
+      mukutu: `${process.env.HOME}/.claude-mukutu`,
+    };
+    const NAMES = Object.keys(DIRS).join(" | ");
+    let chosen: string | undefined;
+
+    /** Asks rather than guesses: a wrong account is invisible until it is expensive. */
+    export function resolve(given?: string): string {
+      let name = given?.trim();
+      while (!name || !(name in DIRS)) {
+        if (name) console.error(`--account ${name}? só existe: ${NAMES}`);
+        if (!process.stdin.isTTY) {
+          console.error(`--account é obrigatório (${NAMES}): qual assinatura paga este agente?`);
+          process.exit(2);
+        }
+        name = prompt(`qual assinatura paga o agente? (${NAMES})`)?.trim();
+      }
+      chosen = name;
+      return name;
+    }
+
+    /** The env every ACP process is spawned with. Throws instead of falling back: unset is a bug, not a default. */
+    export function env(): Record<string, string | undefined> {
+      if (!chosen) throw new Error(`nenhuma assinatura escolhida — Acp.Account.resolve() não foi chamado (${NAMES})`);
+      const { CLAUDE_CONFIG_DIR: _default, ...rest } = process.env;
+      const dir = DIRS[chosen];
+      return dir ? { ...rest, CLAUDE_CONFIG_DIR: dir } : rest;
+    }
+  }
+
   export const Agent = {
     connect(command: string, client: Partial<acp.Client> = {}) {
       const { spawn } = process.getBuiltinModule("node:child_process");
       const { Readable, Writable } = process.getBuiltinModule("node:stream");
       const [bin, ...args] = command.split(" ");
-      const child = spawn(bin, args, { stdio: ["pipe", "pipe", "inherit"] });
+      const child = spawn(bin, args, { stdio: ["pipe", "pipe", "inherit"], env: Account.env() });
       const stream = acp.ndJsonStream(
         Writable.toWeb(child.stdin!) as WritableStream<Uint8Array>,
         Readable.toWeb(child.stdout!) as unknown as ReadableStream<Uint8Array>,
@@ -2835,24 +2870,26 @@ export namespace Server {
 /** The two verbs of the command line, parsed into what main() dispatches. */
 export namespace Cli {
   export const USAGE = `usage:
-  bun main.ts serve [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
-  bun main.ts acp caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]`;
+  bun main.ts serve --account personal|mukutu [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+  bun main.ts acp --account personal|mukutu caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
+
+  --account diz qual assinatura Claude paga o agente e não tem default; sem ele o comando para e pergunta.`;
 
   export type Command =
-    | { verb: "serve"; options: Server.Options }
-    | { verb: "acp caps" | "acp list" | "acp daemon"; agent: string; cwd: string; all: boolean; session?: string; allow: boolean }
+    | { verb: "serve"; options: Server.Options; account?: string }
+    | { verb: "acp caps" | "acp list" | "acp daemon"; agent: string; cwd: string; all: boolean; session?: string; allow: boolean; account?: string }
     | { verb: "usage" };
 
   export function parse(argv: string[]): Command {
     const [verb, ...rest] = argv;
-    const valued = new Set(["--slug", "--port", "--db", "--agent", "--tools", "--cwd", "--session"]);
+    const valued = new Set(["--slug", "--port", "--db", "--agent", "--tools", "--cwd", "--session", "--account"]);
     const flag = (name: string) => { const i = rest.indexOf(name); return i >= 0 ? rest[i + 1] : undefined; };
     const positionals = rest.filter((a, i) => !a.startsWith("--") && !valued.has(rest[i - 1]));
     const agent = flag("--agent") ?? "claude-agent-acp";
     if (verb === "serve") {
       const slug = flag("--slug");
       const fresh = rest.includes("--new");
-      return { verb, options: {
+      return { verb, account: flag("--account"), options: {
         app: positionals[0],
         db: Memory.address({ db: flag("--db"), fresh, cwd: process.cwd() }),
         port: Number(flag("--port") ?? (slug ? 0 : 3000)),
@@ -2862,7 +2899,7 @@ export namespace Cli {
     }
     const sub = `${verb} ${positionals[0]}`;
     if (sub === "acp caps" || sub === "acp list" || sub === "acp daemon") {
-      return { verb: sub, agent, cwd: flag("--cwd") ?? process.cwd(), all: rest.includes("--all"), session: flag("--session"), allow: rest.includes("--allow") };
+      return { verb: sub, agent, account: flag("--account"), cwd: flag("--cwd") ?? process.cwd(), all: rest.includes("--all"), session: flag("--session"), allow: rest.includes("--allow") };
     }
     return { verb: "usage" };
   }
@@ -2870,6 +2907,7 @@ export namespace Cli {
 
 async function main() {
   const command = Cli.parse(process.argv.slice(2));
+  if (command.verb !== "usage") Acp.Account.resolve(command.account);
   switch (command.verb) {
     case "serve": return Server.serve(command.options);
     case "acp caps": return Acp.Commands.caps(command.agent);
