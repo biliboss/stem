@@ -25,7 +25,7 @@ class Memory          o SurrealDB embutido e a COSTURA: define() escreve defini�
 const Pulse           SSE, drafts, gates e phases; sobrevive ao `bun --hot` em globalThis
 class Interpreter     o agente ACP: PHASES · design() · resolve() · compile() · judge()
 namespace Server      serve() e app(): o Hono com cada rota, na ordem em que o pedido as encontra
-namespace Cli         serve [<app>.ts] · acp caps|list|daemon — todos exigem --account personal|mukutu
+namespace Cli         serve [<app>.ts] · acp caps|list|daemon — todos exigem --account <nome>
 function main()
 .storybook/           o catálogo: os 58 do DaisyUI 5 e os do kernel — `pnpm storybook` na 6006
 docs/                 os experimentos e as pesquisas; experiments/ tem os scripts e o bruto
@@ -33,8 +33,9 @@ docs/                 os experimentos e as pesquisas; experiments/ tem os script
 
 ```
 just stem::self <account>         stem.localhost, o sistema que gerencia os OUTROS: banco em ~/.stem/system.skv
-cd apps/stem/.run/<slug> && bun ../../main.ts serve --new --slug <slug> --tools mcp --account mukutu
---account personal|mukutu         qual assinatura Claude paga o agente; sem default, sem ele o comando pergunta
+cd apps/stem/.run/<slug> && bun ../../main.ts serve --new --slug <slug> --tools mcp --account personal
+--account <nome>                  qual assinatura Claude paga o agente; sem default, sem ele o comando pergunta.
+                                  `personal` vem de fábrica; o resto entra por STEM_ACCOUNTS="nome=~/.claude-nome"
 bun --hot ../../main.ts serve …   Kernel e View mudam no reload sem reiniciar um design em curso
 claude mcp add --transport http --scope local system http://<slug>.localhost/_mcp
 ```

@@ -1,5 +1,6 @@
-# a Stem system for the current directory: `cd apps/stem/.run/<slug> && just --justfile ../../justfile serve <slug> mukutu`
-# account (personal|mukutu) diz qual assinatura Claude paga o agente — o just exige, como o CLI
+# a Stem system for the current directory: `cd .run/<slug> && just --justfile ../../justfile serve <slug> personal`
+# account diz qual assinatura Claude paga o agente — o just exige, como o CLI.
+# `personal` vem de fábrica; outras contas entram por STEM_ACCOUNTS="nome=~/.claude-nome".
 serve slug account:
     bun ../../main.ts serve --new --no-open --slug {{slug}} --tools mcp --account {{account}}
 
