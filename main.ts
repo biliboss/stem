@@ -3,8 +3,9 @@
 // stem — a system that starts blank. One process, one embedded database and one ACP agent: every request becomes
 // an operation, a known capability answers it without a model, anything else goes to the agent, and what repeats
 // crystallizes into something that runs without one. The screen, the backend and the design are born from use.
-//   bun main.ts serve --account personal|mukutu [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
-//   bun main.ts acp --account personal|mukutu caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
+//   bun main.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+//   bun main.ts check <app>.ts — the rules the app claims, verified; exits 1 when one is broken
+//   bun main.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 //   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp
 //   POST /_intent · /_feedback · /_accept · /_judge · GET text/html → a view · anything else → an operation
 //
@@ -906,7 +907,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
   }
 
   /** The whole page around a view: the kernel inlined, the studio, the palette, and the script that listens to /_events. */
-  export function Shell({ title, body, path, tokens = {}, bootstrap = false }: { title: string; body: string; path: string; tokens?: Record<string, string>; bootstrap?: boolean }) {
+  export function Shell({ title, body, path, tokens = {}, head = "", bootstrap = false }: { title: string; body: string; path: string; tokens?: Record<string, string>; head?: string; bootstrap?: boolean }) {
     const css = Object.entries(tokens).map(([k, v]) => `${k}:${v}`).join(";");
     return "<!doctype html>" + (
       h("html", { lang: "pt-BR", "data-theme": "kernel" },
@@ -918,6 +919,8 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
               h("link", { href: "https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans@5/index.css", rel: "stylesheet" }),
               h("script", { src: "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" }),
               h("script", { src: "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" }),
+              // Verbatim: a child string is not escaped, and what an app puts here is a <link> to its webfont.
+              head,
               h("style", null, `
           ${Kernel.css}
           ${css ? `[data-theme] { ${css} }` : ""}
@@ -1216,10 +1219,20 @@ export namespace Acp {
    *  nobody chose, and it only shows up on the invoice. `personal` is the DEFAULT config dir — which is NOT
    *  `~/.claude`, a third and stale profile — so it UNSETS the variable a parent session may already carry. */
   export namespace Account {
-    export const DIRS: Record<string, string | undefined> = {
-      personal: undefined,
-      mukutu: `${process.env.HOME}/.claude-mukutu`,
-    };
+    /** Extra accounts come from the environment, never from this file: a framework that ships
+     *  the author's company name in `--help` is a framework with exactly one user.
+     *  STEM_ACCOUNTS="work=~/.claude-work,client=~/.claude-client" */
+    function declared(): Record<string, string> {
+      const raw = process.env.STEM_ACCOUNTS?.trim();
+      if (!raw) return {};
+      const pairs = raw.split(",").map((pair) => {
+        const [name, dir] = pair.split("=").map((s) => s.trim());
+        return [name, dir?.replace(/^~/, process.env.HOME ?? "~")] as const;
+      });
+      return Object.fromEntries(pairs.filter(([name, dir]) => name && dir)) as Record<string, string>;
+    }
+
+    export const DIRS: Record<string, string | undefined> = { personal: undefined, ...declared() };
     const NAMES = Object.keys(DIRS).join(" | ");
     let chosen: string | undefined;
 
@@ -2556,10 +2569,97 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
   }
 }
 
+/**
+ * The laws a system claims, checked by arithmetic instead of by trust.
+ *
+ * An app states its rules in three places that cannot verify each other — PRODUCT.md is prose, the `SYSTEM `
+ * teaching is an instruction to a model, and the tokens are values. This namespace is the fourth place, and the
+ * only one that can FAIL: it renders every component with its own example and reads the result. Everything here
+ * is string and arithmetic, so it runs in a build with no browser and at boot with no cost worth measuring.
+ *
+ * A rule lives here only when breaking it is a defect rather than a taste. Contrast below AA is a defect; a
+ * colour someone dislikes is not.
+ */
+export namespace Rules {
+  export type Violation = { rule: string; where: string; detail: string };
+
+  /** Webflow leftovers that libs/ui bans by name: they read as brand and are not. */
+  const BANNED = new Set(["#4353ff", "#3898ec", "#0073e6"]);
+  /** Glyphs that get reached for as icons. A character is a font's opinion, not a drawn shape at a known weight. */
+  const GLYPH = /[←-⇿⌀-➿⬀-⯿️\u{1F300}-\u{1FAFF}]/u;
+
+  const HEX = /#[0-9a-fA-F]{6}\b/g;
+
+  /** WCAG relative luminance, sRGB. */
+  function luminance(hex: string) {
+    const c = [1, 3, 5].map((i) => {
+      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  }
+
+  /** The ratio WCAG 2.2 measures: 4.5 for body text, 3 for large text and non-text UI. */
+  export function contrast(a: string, b: string) {
+    const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m) as [number, number];
+    return (x + 0.05) / (y + 0.05);
+  }
+
+  export function check(app: Server.App): Violation[] {
+    const bad: Violation[] = [];
+    const tokens = app.tokens ?? {};
+    const values = new Set(Object.values(tokens).map((v) => v.toLowerCase()));
+
+    for (const [name, value] of Object.entries(tokens)) {
+      for (const hex of value.toLowerCase().match(HEX) ?? []) {
+        if (BANNED.has(hex)) bad.push({ rule: "banned-colour", where: name, detail: `${hex} is a Webflow leftover, not brand` });
+      }
+    }
+
+    // A foreground is only a pair when the app declared one; an unpaired colour is a choice, not a defect.
+    for (const [name, bg] of Object.entries(tokens)) {
+      const fg = tokens[`${name}-content`];
+      if (!fg || !/^#[0-9a-fA-F]{6}$/.test(bg) || !/^#[0-9a-fA-F]{6}$/.test(fg)) continue;
+      const ratio = contrast(bg, fg);
+      if (ratio < 4.5) bad.push({ rule: "contrast-aa", where: `${name} / ${name}-content`, detail: `${ratio.toFixed(2)}:1 is under 4.5:1 (${bg} on ${fg})` });
+    }
+
+    for (const [name, c] of Object.entries(app.components ?? {})) {
+      let html: string;
+      try { html = c.render(c.example ?? {}, "", { id: name }); }
+      catch (e) { bad.push({ rule: "renders", where: name, detail: `its own example throws: ${e}` }); continue; }
+
+      for (const hex of html.toLowerCase().match(HEX) ?? []) {
+        if (BANNED.has(hex)) bad.push({ rule: "banned-colour", where: name, detail: `${hex} is a Webflow leftover, not brand` });
+        else if (!values.has(hex)) bad.push({ rule: "hex-in-component", where: name, detail: `${hex} is a literal, not a token: use var(--…)` });
+      }
+      // Um glifo só é defeito quando é CHROME do componente. Um emoji no corpo de um post é dado, e a regra
+      // acusava o conteúdo do exemplo — falso positivo achado por dado hostil. Por isso a varredura de glifo
+      // roda sobre o render SEM dado: o que sobra ali é o que o componente desenha por conta própria.
+      let chrome = ""; try { chrome = c.render({}, "", { id: name }); } catch { chrome = ""; }
+      const glyph = chrome.replace(/<svg[\s\S]*?<\/svg>/g, "").match(GLYPH);
+      if (glyph) bad.push({ rule: "glyph-as-icon", where: name, detail: `"${glyph[0]}" is a font character standing in for a drawn icon` });
+      if (/outline\s*:\s*(0|none)/.test(html) && !/box-shadow/.test(html)) {
+        bad.push({ rule: "focus-ring", where: name, detail: "outline is removed and nothing replaces the ring" });
+      }
+      if (/transition/.test(html) && !/prefers-reduced-motion/.test(html)) {
+        bad.push({ rule: "reduced-motion", where: name, detail: "it animates and never answers prefers-reduced-motion" });
+      }
+    }
+    return bad;
+  }
+
+  /** One line per violation, so a build log and a boot log read the same. */
+  export function report(bad: Violation[]) {
+    for (const v of bad) console.error(`rule ${v.rule} · ${v.where} — ${v.detail}`);
+    return bad.length;
+  }
+}
+
 /** Every method on every path lands here, in the order a request would hit them. */
 export namespace Server {
   export type Options = {
-    /** The <app>.ts that will define the system; carried, not read yet. */
+    /** The <app>.ts that defines the system: read once, before the first request. */
     app?: string;
     db: string;
     port: number;
@@ -2568,6 +2668,87 @@ export namespace Server {
     slug?: string;
     open: boolean;
   };
+
+  /**
+   * What an `<app>.ts` default-exports: what this system IS before anyone uses it. The database is still the
+   * only state — this seeds it, so a dropped `.skv` costs nothing and the system's identity lives in git.
+   */
+  export type App = {
+    /** How this system calls itself. Titles the app's own group in the catalog. */
+    name?: string;
+    /** DaisyUI 5 variables that override `[data-theme=kernel]`, e.g. `{"--color-primary":"oklch(43% .04 202)"}`. */
+    tokens?: Record<string, string>;
+    /** scope → instruction, the same pair the `teach` tool takes: `"SYSTEM "` or `"METHOD /path"`. */
+    teach?: Record<string, string>;
+    /** Raw HTML appended to every page's <head>: where an app loads its own webfont. */
+    head?: string;
+    /**
+     * The order the catalog's groups are read in, most whole first. Without it the order is whichever component
+     * happened to be declared first, which makes the navigation an accident of the file instead of a decision.
+     */
+    catalog?: string[];
+    /**
+     * Components only this system has. They join the catalog the agent composes from, so a view may name them
+     * like any native one, and each `example` is what the catalog renders to show it — the component's own story.
+     */
+    components?: Record<string, {
+      render: (p: any, children: string, el: { id: string }) => string;
+      example?: Record<string, unknown>;
+      /**
+       * Where it sits in the app's catalog, appended to the app's name with a space, so `"Templates"` is the
+       * root `Sales AI Templates` and `"Components/Chrome"` is a shelf inside `Sales AI Components`.
+       * Defaults to "Components".
+       */
+      group?: string;
+      /**
+       * It owns the viewport: the catalog shows it edge to edge, with no padding around it. A component is a
+       * piece and gets a frame; a template IS the screen, and a frame around it cuts off whatever sits at the
+       * bottom — which is where a status strip lives.
+       */
+      full?: boolean;
+    }>;
+  };
+
+  /** The app this process is serving, for the routes that show it. Set once, by install(). */
+  let current: App = {};
+
+  /**
+   * Seeding is idempotent because boot happens many times and `teach` accumulates: an instruction already last in
+   * its scope is skipped, so restarting does not stack duplicates the agent would read as a history of changes.
+   */
+  /** Load an `<app>.ts` and verify it, with no database and no agent: the build-time half of the same check. */
+  export async function checkApp(file: string) {
+    const path = process.getBuiltinModule("node:path").resolve(file);
+    const app = ((await import(process.getBuiltinModule("node:url").pathToFileURL(path).href)) as { default?: App }).default;
+    if (!app) throw new Error(`${file} has no default export`);
+    const broken = Rules.report(Rules.check(app));
+    console.error(`${path} · ${Object.keys(app.components ?? {}).length} components · ${broken ? `${broken} broken` : "rules ok"}`);
+    if (broken) process.exit(1);
+  }
+
+  export async function install(memory: Memory, file: string) {
+    const path = process.getBuiltinModule("node:path").resolve(file);
+    const loaded = (await import(process.getBuiltinModule("node:url").pathToFileURL(path).href)) as { default?: App };
+    const app = loaded.default;
+    if (!app) throw new Error(`${file} has no default export`);
+    current = app;
+    // The catalog is one object and the renderer reads it by name, so an app's component is native from here on.
+    for (const [name, c] of Object.entries(app.components ?? {})) {
+      (View.Catalog.components as Record<string, unknown>)[name] = c.render;
+    }
+    if (app.tokens) await memory.saveTokens(app.tokens, { kind: "app", file: path });
+    const last = new Map((await memory.taught()).map((t) => [t.scope, t.instructions.at(-1)?.instruction]));
+    let taught = 0;
+    for (const [scope, instruction] of Object.entries(app.teach ?? {})) {
+      if (last.get(scope) === instruction) continue;
+      await memory.teach(scope, instruction);
+      taught++;
+    }
+    // At boot a broken rule is news, never a reason to refuse service: a running system with a contrast
+    // regression still answers its clients. `stem check` is the same function with an exit code, for a build.
+    const broken = Rules.report(Rules.check(app));
+    console.error(`app ${path} · tokens ${Object.keys(app.tokens ?? {}).length} · taught ${taught} · rules ${broken ? `${broken} broken` : "ok"}`);
+  }
 
   export async function serve(o: Options) {
     // `bun --hot` runs this file again on save: the process keeps its database, its agent and its port, and only
@@ -2579,6 +2760,7 @@ export namespace Server {
       return;
     }
     const memory = await Memory.open(o.db);
+    if (o.app) await install(memory, o.app);
     // idleTimeout 0: a design holds a request for minutes and /_events never ends, and Bun's default cuts both at 10 s.
     const server = Bun.serve({ port: o.port, idleTimeout: 0, fetch: () => new Response("starting", { status: 503 }) });
     const base = `http://localhost:${server.port}`;
@@ -2638,8 +2820,8 @@ export namespace Server {
     });
     // The design system catalog is the static Storybook build (`pnpm build-storybook -o storybook-static`).
     hono.all("/_ds", () => new Response(null, { status: 308, headers: { location: "/_ds/" } }));
-    hono.all("/_ds/*", (c) => storybook(new URL(c.req.url).pathname));
-    hono.all("/_design", async () => send(200, View.Shell({ title: "design system", body: View.render(View.DESIGN_SYSTEM.spec, View.DESIGN_SYSTEM.data), path: "/_design", tokens: await memory.tokens() }), HTML));
+    hono.all("/_ds/*", async (c) => storybook(new URL(c.req.url), await memory.tokens()));
+    hono.all("/_design", async () => send(200, View.Shell({ title: "design system", body: View.render(View.DESIGN_SYSTEM.spec, View.DESIGN_SYSTEM.data), path: "/_design", tokens: await memory.tokens(), head: current.head }), HTML));
     hono.all("/_mcp", (c) => Mcp.SystemMcp.handle(port, c.req.raw));
     hono.get("/_media/:name", (c) => Media.serve(c.req.param("name")));
     // A gesture that did not come from this page's own palette (the MCP, another tab) is replayed on
@@ -2697,7 +2879,7 @@ export namespace Server {
       const body = (Object.keys(errors).length
         ? `<div role="alert" class="alert alert-error m-4 text-sm">a view ${path} tem query quebrada: ${Object.keys(errors).join(", ")}</div>` : "")
         + View.render(spec, data, params);
-      return send(200, View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), bootstrap: by === "bootstrap" || by === "designing" }), HTML, { "x-resolved-by": by });
+      return send(200, View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), head: current.head, bootstrap: by === "bootstrap" || by === "designing" }), HTML, { "x-resolved-by": by });
     }
 
     async function intent(body: { intent?: string; path?: string; preferences?: string; interactive?: boolean; from?: number }) {
@@ -2851,15 +3033,95 @@ export namespace Server {
     try { return JSON.parse(text); } catch { return text; }
   }
 
-  async function storybook(pathname: string) {
+  /** `Sales AI` + `Components/Menu` + `InterestRow` → `sales-ai-components-menu--interestrow`. */
+  const slug = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const storyId = (group: string, name: string) => `${slug(`${current.name ?? "app"} ${group}`)}--${slug(name)}`;
+
+  /**
+   * The app's components in the catalog WITHOUT a rebuild. Storybook bakes its index and its preview bundle at
+   * build time, and `storybook-static/` is one directory shared by every slug — so a story file would put this
+   * app's components in another app's catalog. Instead the index gains synthetic entries and the iframe for those
+   * ids is served by this runtime: the manager only needs an iframe that loads, and the theme is already ours.
+   */
+  function stories() {
+    const order = current.catalog ?? [];
+    const rank = (g: string) => { const i = order.indexOf(g); return i < 0 ? order.length : i; };
+    return Object.entries(current.components ?? {})
+      .map(([name, c]) => [name, c, c.group ?? "Components"] as const)
+      .sort((a, b) => rank(a[2]) - rank(b[2]))
+      .map(([name, , group]) => [storyId(group, name), {
+        type: "story", subtype: "story", id: storyId(group, name), name,
+        title: `${current.name ?? "App"} ${group}`, importPath: "./runtime", tags: ["dev", "manifest"], exportName: name,
+      }] as const);
+  }
+
+  async function storybook(url: URL, tokens: Record<string, string> = {}) {
     const { readFile } = process.getBuiltinModule("node:fs/promises");
     const { join } = process.getBuiltinModule("node:path");
+    const pathname = url.pathname;
     const root = join(import.meta.dirname, "storybook-static");
     const file = join(root, decodeURIComponent(pathname.slice("/_ds/".length)) || "index.html");
     if (!file.startsWith(root)) return new Response(null, { status: 403 });
+    const mine = stories();
+    if (file.endsWith("index.json") && mine.length) {
+      const index = JSON.parse(await readFile(file, "utf8")) as { entries: Record<string, unknown> };
+      for (const [id, entry] of mine) index.entries[id] = entry;
+      return send(200, index);
+    }
+    // A synthetic id never exists in the preview bundle, so this runtime renders the component itself.
+    const asked = mine.find(([id]) => id === url.searchParams.get("id"));
+    if (file.endsWith("iframe.html") && asked) {
+      const [, entry] = asked;
+      const component = current.components![entry.name]!;
+      const css = Object.entries(tokens).map(([k, v]) => `${k}:${v}`).join(";");
+      return send(200, `<!doctype html><html lang="pt-BR" data-theme="kernel"><head><meta charset="utf-8">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+${current.head ?? ""}<style>${Kernel.css}${css ? `html[data-theme]{${css}}` : ""}</style></head>
+<body><div class="${component.full ? "" : "min-h-screen bg-base-100 p-6"}">${component.render(component.example ?? {}, "", { id: entry.name })}</div>
+<script>
+// The manager keeps its spinner until the preview speaks. This page is not the Storybook preview, so it announces
+// itself on the same postMessage channel: without these the story renders behind a loader that never goes away.
+const story = ${JSON.stringify(entry.id)};
+const say = (type, args) => parent.postMessage(JSON.stringify({ key: "storybook-channel", event: { type, args, from: "preview" } }), "*");
+say("channelCreated", []);
+say("storyRendered", [story]);
+say("currentStoryWasSet", [{ storyId: story, viewMode: "story" }]);
+// The manager does NOT reload the iframe to change story: it sends setCurrentStory over this channel and waits.
+// The real preview swaps in place; this page cannot, so it navigates — otherwise clicking any other story in the
+// sidebar leaves whatever synthetic story was open on screen, which is the bug this line exists to prevent.
+addEventListener("message", (e) => {
+  let event; try { event = JSON.parse(e.data).event; } catch { return; }
+  if (event?.type !== "setCurrentStory") return;
+  const next = event.args?.[0]?.storyId;
+  if (next && next !== story) location.href = "iframe.html?id=" + encodeURIComponent(next) + "&viewMode=story";
+});
+</script></body></html>`, HTML);
+    }
     try {
       const types: Record<string, string> = { html: HTML, js: "text/javascript", mjs: "text/javascript", css: "text/css",
         json: "application/json", svg: "image/svg+xml", png: "image/png", woff2: "font/woff2", map: "application/json" };
+      // The catalog is a static build, so it shows the kernel default unless this system's theme is put back in.
+      // `preview.ts` appends Kernel.css to the head at RUNTIME, after anything the file already carries, so the
+      // override cannot win on document order: `html[data-theme]` outranks the kernel's `[data-theme=kernel]`.
+      if (file.endsWith("iframe.html") && (Object.keys(tokens).length || mine.length)) {
+        const css = Object.entries(tokens).map(([k, v]) => `${k}:${v}`).join(";");
+        // The other half of the same problem: here the REAL preview is loaded, and the manager hands it a
+        // synthetic id over the channel. Its importFn has no module for one, so it throws where the story should
+        // be. This listener is in the head, ahead of the deferred bundle, so it navigates away before that runs.
+        const guard = mine.length ? `<script>
+const synthetic = ${JSON.stringify(mine.map(([id]) => id))};
+addEventListener("message", (e) => {
+  let event; try { event = JSON.parse(e.data).event; } catch { return; }
+  if (event?.type !== "setCurrentStory") return;
+  const next = event.args?.[0]?.storyId;
+  if (synthetic.includes(next)) location.href = "iframe.html?id=" + encodeURIComponent(next) + "&viewMode=story";
+});
+</script>` : "";
+        const html = (await readFile(file, "utf8"))
+          .replace("</head>", `${guard}${css ? `<style>html[data-theme]{${css}}</style>` : ""}</head>`);
+        return new Response(html, { headers: { "content-type": HTML } });
+      }
       return new Response(await readFile(file), { headers: { "content-type": types[file.split(".").pop() ?? ""] ?? "application/octet-stream" } });
     } catch {
       return new Response("storybook not built: pnpm build-storybook -o storybook-static", { status: 404, headers: { "content-type": "text/plain" } });
@@ -2870,13 +3132,15 @@ export namespace Server {
 /** The two verbs of the command line, parsed into what main() dispatches. */
 export namespace Cli {
   export const USAGE = `usage:
-  bun main.ts serve --account personal|mukutu [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
-  bun main.ts acp --account personal|mukutu caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
+  bun main.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+  bun main.ts check <app>.ts                    the rules the app claims, verified; exits 1 on the first broken one
+  bun main.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 
   --account diz qual assinatura Claude paga o agente e não tem default; sem ele o comando para e pergunta.`;
 
   export type Command =
     | { verb: "serve"; options: Server.Options; account?: string }
+    | { verb: "check"; app: string }
     | { verb: "acp caps" | "acp list" | "acp daemon"; agent: string; cwd: string; all: boolean; session?: string; allow: boolean; account?: string }
     | { verb: "usage" };
 
@@ -2897,6 +3161,7 @@ export namespace Cli {
         open: fresh && !rest.includes("--no-open"),
       } };
     }
+    if (verb === "check" && positionals[0]) return { verb, app: positionals[0] };
     const sub = `${verb} ${positionals[0]}`;
     if (sub === "acp caps" || sub === "acp list" || sub === "acp daemon") {
       return { verb: sub, agent, account: flag("--account"), cwd: flag("--cwd") ?? process.cwd(), all: rest.includes("--all"), session: flag("--session"), allow: rest.includes("--allow") };
@@ -2907,6 +3172,8 @@ export namespace Cli {
 
 async function main() {
   const command = Cli.parse(process.argv.slice(2));
+  // check needs no Claude account: it reads the app file and does arithmetic, which is why it belongs in a build.
+  if (command.verb === "check") return Server.checkApp(command.app);
   if (command.verb !== "usage") Acp.Account.resolve(command.account);
   switch (command.verb) {
     case "serve": return Server.serve(command.options);
