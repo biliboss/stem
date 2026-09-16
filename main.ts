@@ -3079,6 +3079,7 @@ export namespace Server {
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 ${current.head ?? ""}<style>${Kernel.css}${css ? `html[data-theme]{${css}}` : ""}</style></head>
 <body><div class="${component.full ? "" : "min-h-screen bg-base-100 p-6"}">${component.render(component.example ?? {}, "", { id: entry.name })}</div>
+<script type="module">${Kernel.js}</script>
 <script>
 // The manager keeps its spinner until the preview speaks. This page is not the Storybook preview, so it announces
 // itself on the same postMessage channel: without these the story renders behind a loader that never goes away.
