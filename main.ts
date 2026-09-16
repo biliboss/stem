@@ -3074,11 +3074,24 @@ export namespace Server {
       const [, entry] = asked;
       const component = current.components![entry.name]!;
       const css = Object.entries(tokens).map(([k, v]) => `${k}:${v}`).join(";");
+      // A moldura é do kernel, e o axe cobra a página, não o componente: sem <title>, <main> e um
+      // <h1>, toda story de app nasce com document-title, landmark-one-main, page-has-heading-one e
+      // region, quatro achados que não são do desenho de ninguém. O h1 é `sr-only` porque a story
+      // mostra o componente sozinho: quem lê com a vista não deve ver título, quem lê com leitor de
+      // tela precisa de um.
+      const titulo = `${entry.title} · ${entry.name}`;
+      const desenho = component.render(component.example ?? {}, "", { id: entry.name });
+      // Um template já traz o seu <main>; envolver de novo cria o segundo. Quando ele já tem um, o
+      // <h1> entra DENTRO dele: fora, ele é conteúdo sem landmark, que é o que a regra `region` cobra.
+      const titulado = `<h1 class="sr-only">${Html.escape(titulo)}</h1>`;
+      const proprio = desenho.replace(/<main\b[^>]*>/i, (tag) => `${tag}${titulado}`);
+      const corpo = `<div class="${component.full ? "" : "min-h-screen bg-base-100 p-6"}">${proprio}</div>`;
       return send(200, `<!doctype html><html lang="pt-BR" data-theme="kernel"><head><meta charset="utf-8">
+<title>${Html.escape(titulo)}</title>
 <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 ${current.head ?? ""}<style>${Kernel.css}${css ? `html[data-theme]{${css}}` : ""}</style></head>
-<body><div class="${component.full ? "" : "min-h-screen bg-base-100 p-6"}">${component.render(component.example ?? {}, "", { id: entry.name })}</div>
+<body>${/<main[\s>]/i.test(desenho) ? corpo : `<main>${titulado}${corpo}</main>`}
 <script type="module">${Kernel.js}</script>
 <script>
 // The manager keeps its spinner until the preview speaks. This page is not the Storybook preview, so it announces
