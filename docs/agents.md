@@ -6,7 +6,7 @@ separados cada um tem uma porta já decidida. Registrado em 14/09, depois de cin
 b2) a pedido do dono; nada do agente-produto está construído.
 
 ```
-construtor      claude-agent-acp  ──ACP──▶  main.ts   escreve definição, opera pelo /_mcp, dentro de uma cerca
+construtor      claude-agent-acp  ──ACP──▶  stem.ts   escreve definição, opera pelo /_mcp, dentro de uma cerca
 agente-produto  pipi-sdk Conversation      consome `asked`, produz `sent` no barramento do app
 ```
 

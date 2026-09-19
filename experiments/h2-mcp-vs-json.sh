@@ -20,7 +20,7 @@ for mode in json mcp; do
   for run in $(seq 1 "$N"); do
     dir=$WORK/$mode-$run
     rm -rf "$dir" && mkdir -p "$dir"
-    (cd "$dir" && exec "$BUN" "$HERE/main.ts" serve --new --no-open --port $PORT --tools $mode) >"$dir/server.log" 2>&1 &
+    (cd "$dir" && exec "$BUN" "$HERE/stem.ts" serve --new --no-open --port $PORT --tools $mode) >"$dir/server.log" 2>&1 &
     pid=$!
     until curl -sf "$B/_system" >/dev/null; do sleep 1; done
     mcp_query "CREATE catalogo_item CONTENT { nome: 'Cadeira Ondina', preco_centavos: 89000, estoque: 3 };

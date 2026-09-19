@@ -1,9 +1,9 @@
 import type { Preview } from "@storybook/html-vite";
 import "@fontsource-variable/mona-sans";
 import "./storybook.css";
-import { Kernel } from "../main.ts";
+import { Kernel } from "../stem.ts";
 
-// The kernel is two strings in main.ts, and the catalog gets them the way the Shell inlines them: the same style
+// The kernel is two strings in stem.ts, and the catalog gets them the way the Shell inlines them: the same style
 // after DaisyUI, and the same behavior as a module script, which mounts on every htmx:afterSwap.
 const style = document.createElement("style");
 style.textContent = Kernel.css;

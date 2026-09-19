@@ -1,6 +1,6 @@
 ---
 name: stem
-description: Operate a running Stem system through its MCP — shape screens, teach routes, feed data in as operations, keep media files, and read what the system already knows. Use whenever the task is to build or change something inside a Stem app (a `<slug>.localhost` with `/_mcp`, e.g. viacorretor.localhost): "pede pro Stem", "manda por MCP", "cria a tela", "ensina a rota", "traz os dados pro app", "mostra o áudio/o documento", "muda a view". Not for editing the framework itself (apps/stem/main.ts) — that is code work.
+description: Operate a running Stem system through its MCP — shape screens, teach routes, feed data in as operations, keep media files, and read what the system already knows. Use whenever the task is to build or change something inside a Stem app (a `<slug>.localhost` with `/_mcp`, e.g. viacorretor.localhost): "pede pro Stem", "manda por MCP", "cria a tela", "ensina a rota", "traz os dados pro app", "mostra o áudio/o documento", "muda a view". Not for editing the framework itself (apps/stem/stem.ts) — that is code work.
 ---
 
 # stem
@@ -22,7 +22,7 @@ the session that launched it — a background task of the agent's own shell dies
 
 ```sh
 mkdir -p apps/stem/.run/<slug> && cd apps/stem/.run/<slug>
-nohup bun ../../main.ts serve --new --no-open --slug <slug> --tools mcp --account <account> \
+nohup bun ../../stem.ts serve --new --no-open --slug <slug> --tools mcp --account <account> \
   > /tmp/stem-<slug>.log 2>&1 < /dev/null & disown
 ```
 

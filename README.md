@@ -32,7 +32,7 @@ flattens, it is an expensive chat with a database.
 Requires [Bun](https://bun.sh).
 
 ```bash
-bun main.ts serve --new --slug hello --tools mcp --account <name>
+bun stem.ts serve --new --slug hello --tools mcp --account <name>
 ```
 
 `--account` says which Claude subscription pays the agent. There is no
@@ -56,7 +56,7 @@ Three gestures, and the screen and the MCP client make the same three:
 
 ## One file
 
-The framework is `main.ts`, and its outline is the design. This is not
+The framework is `stem.ts`, and its outline is the design. This is not
 minimalism — it is the constraint that keeps every answer honest. If a
 solution does not fit the same outline, it is not part of the framework; it
 is a second system in disguise.
@@ -76,7 +76,7 @@ namespace Server       serve() and app(): the Hono, route by route
 namespace Cli          serve · acp caps|list|daemon
 ```
 
-It is also a library: `main.ts` imports cleanly into a browser, which is why
+It is also a library: `stem.ts` imports cleanly into a browser, which is why
 nothing at module level touches Node or Bun.
 
 ## Status

@@ -9,7 +9,7 @@ const config: StorybookConfig = {
   viteFinal: async (vite) => ({
     ...vite,
     plugins: [...(vite.plugins ?? []), tailwind()],
-    // main.ts reaches the native SurrealDB engine by import() at run time; the browser never runs that path,
+    // stem.ts reaches the native SurrealDB engine by import() at run time; the browser never runs that path,
     // and neither the dep optimizer nor the bundle may try to load a .node binary.
     optimizeDeps: { ...vite.optimizeDeps, exclude: [...(vite.optimizeDeps?.exclude ?? []), "@surrealdb/node"] },
     build: { ...vite.build, rollupOptions: { ...vite.build?.rollupOptions, external: ["@surrealdb/node"] } },

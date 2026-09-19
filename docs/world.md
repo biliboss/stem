@@ -7,7 +7,7 @@ construído, é a direção.
 
 ## Dois arquivos, um banco por app
 
-O framework é um arquivo (`main.ts`) e cada aplicação é outro (`<app>.ts`) que o estende: importa o `Stem`, se
+O framework é um arquivo (`stem.ts`) e cada aplicação é outro (`<app>.ts`) que o estende: importa o `Stem`, se
 declara e roda sozinha. O agente ACP escreve em exatamente dois lugares, e cada um guarda uma coisa.
 
 ```

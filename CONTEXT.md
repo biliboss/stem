@@ -7,7 +7,7 @@ não sabe vai para o agente, e o que se repete cristaliza em algo que roda sem m
 backend e o design nascem do uso, e cada correção do dono vira preferência que muda o próximo
 rascunho. O que já foi provado, com número, está em `docs/EXPERIMENTS.md`; o resto do porquê, em `docs/`.
 
-**Um arquivo, `main.ts`, e o outline dele é o desenho.** Roda em Bun com Hono na frente. Ele é também
+**Um arquivo, `stem.ts`, e o outline dele é o desenho.** Roda em Bun com Hono na frente. Ele é também
 biblioteca: um `<app>.ts` vai importá-lo, e o Storybook importa `View` e `Kernel` num browser — por isso nada no
 nível do módulo toca Node ou Bun (builtin por `process.getBuiltinModule` na hora da chamada, o motor nativo do
 SurrealDB por `import()`), e a CLI só roda sob `import.meta.main`.
@@ -33,10 +33,10 @@ docs/                 os experimentos e as pesquisas; experiments/ tem os script
 
 ```
 just stem::self <account>         stem.localhost, o sistema que gerencia os OUTROS: banco em ~/.stem/system.skv
-cd apps/stem/.run/<slug> && bun ../../main.ts serve --new --slug <slug> --tools mcp --account personal
+cd apps/stem/.run/<slug> && bun ../../stem.ts serve --new --slug <slug> --tools mcp --account personal
 --account <nome>                  qual assinatura Claude paga o agente; sem default, sem ele o comando pergunta.
                                   `personal` vem de fábrica; o resto entra por STEM_ACCOUNTS="nome=~/.claude-nome"
-bun --hot ../../main.ts serve …   Kernel e View mudam no reload sem reiniciar um design em curso
+bun --hot ../../stem.ts serve …   Kernel e View mudam no reload sem reiniciar um design em curso
 claude mcp add --transport http --scope local system http://<slug>.localhost/_mcp
 ```
 
@@ -101,4 +101,4 @@ outra rota     capability estática → program promovido (20 ms) → learning �
 - **O Bun corta conexão ociosa em 10 s**: sem `idleTimeout: 0` no `Bun.serve`, o `/_events` e um `/_intent` de minutos morrem calados. Medido em 14/09: o SSE aberto por 14 s recebeu o `draft` emitido aos 12 s.
 - **O `claude-agent-acp` REPORTA custo**, num `sessionUpdate` de tipo `usage_update` com `used`, `size` e `cost: {amount, currency}` — e o que ele manda é o TOTAL CORRIDO da sessão, não o do turno. Por isso `turns()` guarda a linha de base na entrada e devolve a diferença; o `execution` passou a gravar `turns`, `tool_calls` e `cost_usd` ao lado do `duration_ms`, que era tudo o que sobrevivia.
 - **As ferramentas do MCP chamam o runtime em processo** (`hono.request`), não por HTTP: um design leva minutos, e o `fetch` do undici derrubava a resposta em 300 s.
-- **O `main.ts` não tem JSX** porque é `.ts`: o `h()` é chamado direto. O HTML saiu byte a byte igual ao do antigo `view.tsx` (123.933 bytes em quatro renders, 14/09).
+- **O `stem.ts` não tem JSX** porque é `.ts`: o `h()` é chamado direto. O HTML saiu byte a byte igual ao do antigo `view.tsx` (123.933 bytes em quatro renders, 14/09).

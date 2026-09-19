@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/html-vite";
-import { View } from "../main.ts";
+import { View } from "../stem.ts";
 
 const { render } = View;
 type Spec = View.Spec;

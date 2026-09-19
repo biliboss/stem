@@ -3,9 +3,9 @@
 // stem — a system that starts blank. One process, one embedded database and one ACP agent: every request becomes
 // an operation, a known capability answers it without a model, anything else goes to the agent, and what repeats
 // crystallizes into something that runs without one. The screen, the backend and the design are born from use.
-//   bun main.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
-//   bun main.ts check <app>.ts — the rules the app claims, verified; exits 1 when one is broken
-//   bun main.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
+//   bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+//   bun stem.ts check <app>.ts — the rules the app claims, verified; exits 1 when one is broken
+//   bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 //   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp
 //   POST /_intent · /_feedback · /_accept · /_judge · GET text/html → a view · anything else → an operation
 //
@@ -3146,9 +3146,9 @@ addEventListener("message", (e) => {
 /** The two verbs of the command line, parsed into what main() dispatches. */
 export namespace Cli {
   export const USAGE = `usage:
-  bun main.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
-  bun main.ts check <app>.ts                    the rules the app claims, verified; exits 1 on the first broken one
-  bun main.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
+  bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+  bun stem.ts check <app>.ts                    the rules the app claims, verified; exits 1 on the first broken one
+  bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 
   --account diz qual assinatura Claude paga o agente e não tem default; sem ele o comando para e pergunta.`;
 

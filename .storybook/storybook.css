@@ -1,4 +1,4 @@
 @import "tailwindcss";
 @plugin "daisyui";
 @source "../stories";
-@source "../main.ts";
+@source "../stem.ts";
