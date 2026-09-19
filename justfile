@@ -12,6 +12,11 @@ self account:
     cd "$HOME/.stem"
     exec bun {{source_directory()}}/stem.ts serve --no-open --slug stem --tools mcp --account {{account}} --db "surrealkv://$HOME/.stem/system.skv"
 
+# a invariante do `_meta` em tests/apps/stem/meta.spec.ts. FORA do `just test` da raiz: o
+# node --experimental-strip-types recusa `namespace`, e o main.ts é feito deles.
+test:
+    bun test {{source_directory()}}/../../tests/apps/stem/
+
 # the manual an agent reads to operate a Stem system over MCP, linked from the main checkout
 install:
     #!/usr/bin/env bash

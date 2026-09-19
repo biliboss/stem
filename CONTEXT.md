@@ -2,8 +2,8 @@
 
 ## Um sistema que começa em branco e aprende a ser construído
 
-**Um processo, um arquivo de banco e um agente ACP: toda requisição vira operação, o que o sistema
-não sabe vai para o agente, e o que se repete cristaliza em algo que roda sem modelo.** A tela, o
+**Um processo, um arquivo de banco e um agente ACP: toda requisição vira operação, o que o dono DECLARA
+com `_meta` vai para o agente, e o que se repete cristaliza em algo que roda sem modelo.** A tela, o
 backend e o design nascem do uso, e cada correção do dono vira preferência que muda o próximo
 rascunho. O que já foi provado, com número, está em `docs/EXPERIMENTS.md`; o resto do porquê, em `docs/`.
 
@@ -59,6 +59,26 @@ qualquer coisa que ele pudesse julgar, e cada uma gastava um turno do agente.
 - A régua do estúdio se dimensiona sozinha (`grid-auto-flow: column`), então mudar o número de fases não deixa coluna vazia.
 - As fases não paradas continuam gravadas por `keep()`, senão o replay não teria em que se apoiar.
 
+## `_meta` é a única porta, e nenhum botão a chama
+
+**`_meta=<o que este endereço É>` na query ou no corpo de qualquer requisição é a ÚNICA coisa que muda o sistema;
+tudo o mais é determinístico, e endereço que ninguém declarou responde 404 em vez de improvisar.** `_meta` não é
+ordem, é declaração: ela fica como `teaching` do escopo, e a próxima chamada SEM `_meta` continua com o mesmo
+significado. É isso que "nasce pronto" quer dizer — você diz uma vez, o endereço existe.
+
+```
+GET  /para-medicos?_meta=landing page para médicos   sem view → design · com view → edit, e devolve a página
+POST /calendar {data:{…}, _meta:"agenda 30min…"}     agente responde E escreve o program
+POST /calendar {data:{…}}                            program promovido, sem modelo
+GET  /calendar?_meta=                                lê de volta: as declarações, a view e o program
+POST /qualquer-coisa {data:{…}}                      404 — `declare: POST /qualquer-coisa with _meta=…`
+```
+
+- O 404 é a decisão nova: antes, rota desconhecida caía no agente, e um clique perdido virava uma chamada de modelo. Program que quebra também NÃO cai no agente — ele é rebaixado e o 404 diz qual foi o erro, porque quem clicou não pediu nada novo.
+- `tests/apps/stem/meta.spec.ts` cobra a invariante pelo texto: se `_meta` aparecer no `Kernel.js`, no `Kernel.css` ou na Shell, o teste cai. Sem ele, o próprio agente que desenha telas escreve um dia um botão com `?_meta=` no href e ninguém vê. Ele roda em BUN (`just stem::test`) e fica fora do `just test`: o `--experimental-strip-types` recusa `namespace`, e é disso que o `main.ts` é feito.
+- O tool `feedback` do MCP morreu dentro do `meta`; o `intent` sobrevive só pelas fases (`interactive` + `gate`), e o `/_intent` e o `/_feedback` continuam como rotas INTERNAS — é por elas que o `declare()` desenha e edita.
+- O corpo que o agente lê chama `_meta`, não mais `instructions`: uma palavra só do CLI ao prompt.
+
 ## A tela não recebe ordens: o MCP é a única porta
 
 **O ⌘K, o diálogo de feedback, o modo de edição e o `✓ aceitar` saíram da página: todo gesto entra pelo `/_mcp`,
@@ -74,9 +94,9 @@ Ficam só dois toques: `g d` abre o design system e `o` contorna as componentes.
 ## A resolução, do mais barato ao mais caro
 
 ```
-GET text/html  view guardada → render com a query (3 ms) · sistema vazio → bootstrap · senão agente desenha
-outra rota     capability estática → program promovido (20 ms) → learning → agente
-/_intent /_feedback /_accept   a tela e o MCP fazem os mesmos três gestos
+com _meta      o agente: é a única coisa que ele não podia ter compilado antes
+GET text/html  view guardada → render com a query (3 ms) · sistema vazio → bootstrap
+outra rota     capability estática → program promovido (20 ms) → learning → 404
 ```
 
 - Um `program` é a SurrealQL que o agente devolve junto da resposta; a mesma SQL duas vezes para a mesma rota promove, e SQL que quebra rebaixa. Duas escritas iguais provam consistência, não correção.

@@ -50,9 +50,10 @@ The UI never receives commands. The only way in is MCP:
 claude mcp add --transport http --scope local system http://hello.localhost/_mcp
 ```
 
-Three gestures, and the screen and the MCP client make the same three:
-`/_intent` says what you want, `/_feedback` corrects what came back,
-`/_accept` freezes it.
+One gesture: `_meta` says what an address IS, in the query or the body of
+any request, and the declaration stays — `GET /doctors?_meta=a landing page
+for doctors`. Nothing else changes the system, and no button ever sends it,
+so every click a screen makes is deterministic. `/_accept` freezes a screen.
 
 ## One file
 

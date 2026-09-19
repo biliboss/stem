@@ -12,7 +12,7 @@ that run without a model.
 
 ```
 you ──MCP──▶ /_mcp ──▶ runtime ──ACP──▶ the system's agent ──▶ view · program · table
-                 └── query · request · media · teach · prefer · intent · feedback · gate
+                 └── meta · query · request · media · teach · prefer · intent · gate
 ```
 
 ## Bringing one up
@@ -39,7 +39,7 @@ curl -s -N -X POST http://<slug>.localhost/_mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query","arguments":{"sql":"INFO FOR DB"}}}'
 ```
 
-The answer is a `data:` line of an event stream. Design tools (`intent`, `feedback`) hold the call open for minutes:
+The answer is a `data:` line of an event stream. Design tools (`meta`, `intent`) hold the call open for minutes:
 run them in the background and read the result when they return.
 
 Register it as a server and the ten tools arrive as `mcp__system__*` — the name is always `system`, which is what
@@ -67,9 +67,11 @@ reloads its MCP config.
    or an absolute path on the machine — stores the file beside the database and answers `/_media/<name>`. Put that
    path in the row. Never put base64 in a row: it rides every page render. `media` is for what a page *shows*, not
    for what a page *loads* — see the MIME entry below.
-5. **Screens change by `intent` and `feedback`.** `intent {path, intent}` writes a new view; `interactive: true` stops
-   at each of the five phases for the owner to choose (`gate`). `feedback {path, target: "page" | element id,
-   instruction}` changes what exists. Name the catalog components you want (below) and the exact fields.
+5. **`meta` is the only door.** `meta {path, text, method}` declares what an address IS, and the declaration is
+   kept: a page with no view gets designed, one that exists gets edited, any other method gets a backend and a
+   program. `meta {path, text: ""}` reads the declaration back. A request with no `_meta` never wakes the agent —
+   an address nobody declared answers 404 on purpose. Use `intent` only when the owner wants the phase gates
+   (`interactive: true`, then `gate`). Name the catalog components you want (below) and the exact fields.
 6. **Never `accept`.** Acceptance compiles preferences from the owner's journey; it is the owner's gesture.
 
 ## The catalog the agent composes from

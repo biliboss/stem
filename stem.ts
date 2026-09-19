@@ -1,13 +1,16 @@
 #!/usr/bin/env bun
 /// <reference types="bun" />
 // stem — a system that starts blank. One process, one embedded database and one ACP agent: every request becomes
-// an operation, a known capability answers it without a model, anything else goes to the agent, and what repeats
-// crystallizes into something that runs without one. The screen, the backend and the design are born from use.
+// an operation, a known capability answers it without a model, and what repeats crystallizes into something that
+// runs without one. The screen, the backend and the design are born from use. Nothing wakes the agent on its own:
+// `_meta` is the one door, and an address nobody declared answers 404 instead of improvising.
 //   bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
 //   bun stem.ts check <app>.ts — the rules the app claims, verified; exits 1 when one is broken
 //   bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 //   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp
 //   POST /_intent · /_feedback · /_accept · /_judge · GET text/html → a view · anything else → an operation
+//   _meta=<what this address IS> on any request, in the query or the body: the only thing that changes the system.
+//   `_meta=` empty reads the declaration back. No button ever sends it — the screen is deterministic.
 //
 // This file is also a library: an <app>.ts imports it, and Storybook imports View and Kernel in a browser. So nothing
 // at module level touches Node or Bun — builtins are reached at call time through process.getBuiltinModule, the native
@@ -1522,13 +1525,15 @@ rule), system://capabilities for what already runs without a model.
 Change state with the query tool (application tables only) or the request tool (an HTTP operation through the
 runtime, recorded like any client's). Never try to reach the database another way.
 How to interact, in this order:
-1. Name a route before anyone calls it: teach "METHOD /path" with what it means, the table it writes and the answer.
+1. Name a route before anyone calls it, with meta (or teach "METHOD /path") — what it means, the table it writes,
+   the answer.
    Every open page shows the first sentence of that teaching while the operation runs; an untaught route shows as
    unknown, so the owner cannot read what you are doing.
 2. Data that comes from outside enters through request (or the client calling the route), never by INSERT in query:
    an operation is recorded, and the same shape twice crystallizes into a program that runs without a model.
-3. Screens change by intent (interactive: true when the owner is watching) and by feedback on one element. Never
-   call accept: acceptance is the owner's.
+3. The meta tool is the only door that changes this system: it declares what an address IS, and it stays.
+   A request with no _meta never wakes you — an address nobody declared answers 404 on purpose. Use intent when
+   the owner is watching and wants the phase gates. Never call accept: acceptance is the owner's.
 4. One author per definition. Read system://views and the route's behavior before changing it, and do not rename a
    table or field another agent already taught; say so to the owner instead.`,
 
@@ -1581,10 +1586,19 @@ How to interact, in this order:
       });
       mcp.registerTool("request", {
         description: "Send an HTTP operation through the runtime, exactly as a client would; it is recorded.",
-        inputSchema: { method: z.string(), path: z.string(), data: z.record(z.string(), z.unknown()).optional(), instructions: z.string().optional() },
-      }, async ({ method, path, data, instructions }) => {
-        const res = await port.request(method, path, method === "GET" ? undefined : { data, instructions });
+        inputSchema: { method: z.string(), path: z.string(), data: z.record(z.string(), z.unknown()).optional(), _meta: z.string().optional() },
+      }, async ({ method, path, data, _meta }) => {
+        const res = await port.request(method, path, method === "GET" ? undefined : { data, _meta });
         return { content: [{ type: "text", text: `${res.status} ${await res.text()}` }] };
+      });
+      mcp.registerTool("meta", {
+        description: "Declare what an address IS. The declaration is kept, so every later call with no _meta keeps the meaning: a page gets designed or edited, any other method gets a backend and a program. Empty text reads the declaration back.",
+        inputSchema: { path: z.string(), text: z.string(), method: z.string().optional() },
+      }, async ({ path, text, method = "GET" }) => {
+        const res = method === "GET"
+          ? await port.request("GET", `${path}${path.includes("?") ? "&" : "?"}_meta=${encodeURIComponent(text)}`)
+          : await port.request(method, path, { _meta: text });
+        return { isError: res.status >= 400, content: [{ type: "text", text: `${res.status} ${(await res.text()).slice(0, 2000)}` }] };
       });
       // The screen's three gestures, so an agent can shape the system exactly as the owner does. In process, not over
       // HTTP: a design takes minutes, and an HTTP client between the tool and the runtime is one more timeout
@@ -1598,17 +1612,13 @@ How to interact, in this order:
         }
       };
       mcp.registerTool("intent", {
-        description: "Say what a path should become; an agent writes its view. Same as ⌘K. interactive: true is ⌘↵ — the design stops after each phase; read system://design/{path} and answer with gate. path defaults to /.",
+        description: "The interactive form of meta: the design stops after each phase so the owner can steer (read system://design/{path}, answer with gate). Use meta unless you want the gates. path defaults to /.",
         inputSchema: { intent: z.string(), path: z.string().optional(), interactive: z.boolean().optional() },
       }, ({ intent, path, interactive }) => runtime("/_intent", { intent, path, interactive }));
       mcp.registerTool("gate", {
         description: "Answer an interactive design waiting on a path: continue, or revise the current phase with a note. Same as ⌘↵ / typing in the fold. Read system://design/{path} first to see the phase text.",
         inputSchema: { path: z.string(), decision: z.enum(["continue", "revise"]), note: z.string().optional() },
       }, ({ path, decision, note }) => runtime("/_gate", { path, decision, note }));
-      mcp.registerTool("feedback", {
-        description: "Point at an element of a view (its data-system-id, or 'page') and say what should change. Same as right click.",
-        inputSchema: { path: z.string(), target: z.string(), instruction: z.string() },
-      }, ({ path, target, instruction }) => runtime("/_feedback", { path, target, instruction }));
       mcp.registerTool("accept", {
         description: "The current view of a path is what the owner wanted: close the journey and compile preferences. Same as ✓ aceitar.",
         inputSchema: { path: z.string() },
@@ -2171,8 +2181,9 @@ export class Interpreter {
   }
 
   static PROMPT = `You are the runtime of a backend that has no code. You receive one HTTP
-operation as JSON and decide how this backend answers it. The body may carry
-"instructions" from the client. Do not use tools.
+operation as JSON and decide how this backend answers it. The client DECLARED what
+this address is, in "_meta"; it is already kept as a teaching, so write the backend
+that makes it true from now on. Do not use tools.
 
 State lives in SurrealDB (SurrealQL). Tables you create are yours; never touch
 operation, execution, learning or capability. Use INFO FOR DB to see what exists.
@@ -2839,12 +2850,18 @@ export namespace Server {
     hono.all("*", async (c) => {
       const url = new URL(c.req.url);
       const match = { method: c.req.method, path: url.pathname };
-      if (match.method === "GET" && (c.req.header("accept") ?? "").includes("text/html")) return page(match.path);
-      const body = await readBody(c.req.raw);
+      const html = match.method === "GET" && (c.req.header("accept") ?? "").includes("text/html");
+      const body = html ? null : await readBody(c.req.raw);
+      // `_meta` is a declaration of what this address means, and it is the ONLY thing that changes the system.
+      // Empty reads the declaration back instead of writing one.
+      const declared = url.searchParams.get("_meta") ?? (typeof (body as { _meta?: unknown })?._meta === "string" ? (body as { _meta: string })._meta : null);
+      if (declared !== null && declared.trim() === "") return send(200, await believes(match));
+      if (declared !== null) await declare(match, declared.trim(), html);
+      if (html) return page(match.path);
       const headers = Object.fromEntries(c.req.raw.headers);
       const op = await memory.record({ ...match, query: url.search, headers, body });
       try {
-        const r = await resolve(op, match, body, headers, url.search);
+        const r = await resolve(op, match, body, headers, url.search, declared);
         await memory.complete(op, r);
         // A write that landed changes what every open page shows: they develop in place, without a reload.
         if (match.method !== "GET" && r.status < 400) Pulse.emit("changed", { path: "*" });
@@ -2882,7 +2899,29 @@ export namespace Server {
       return send(200, View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), head: current.head, bootstrap: by === "bootstrap" || by === "designing" }), HTML, { "x-resolved-by": by });
     }
 
-    async function intent(body: { intent?: string; path?: string; preferences?: string; interactive?: boolean; from?: number }) {
+    /**
+     * A declaration, not an order: `_meta` says what this address IS, so it is kept as the teaching of its scope
+     * and the last one is the rule — the next request with no `_meta` still gets the same meaning. On a page it
+     * also shapes the screen at once: a design when there is no view, an edit on the working one when there is.
+     */
+    async function declare(match: Memory.Match, text: string, html: boolean) {
+      const scope = `${match.method} ${match.path}`;
+      if (!html) return void (await memory.teach(scope, text));
+      const found = await memory.viewFor(match.path);
+      if (!found) return void (await intent({ intent: text, path: match.path, scope }));
+      await memory.teach(scope, text);
+      await feedback({ path: match.path, target: "page", instruction: text });
+    }
+
+    /** What this address believes it is today: every declaration in order, and what answers it without a model. */
+    async function believes(match: Memory.Match) {
+      const [meta, program] = [await memory.teachings(match), await memory.program(match)];
+      const view = match.method === "GET" ? await memory.viewFor(match.path) : undefined;
+      return { method: match.method, path: match.path, meta, view: view?.path ?? null,
+        program: program ? { route: program.route, promoted: Boolean(program.promoted) } : null };
+    }
+
+    async function intent(body: { intent?: string; path?: string; preferences?: string; interactive?: boolean; from?: number; scope?: string }) {
       const { path = "/", preferences, from } = body;
       // Starting again from a phase already lived: the earlier approved phases come back, and a design waiting now is stopped.
       const lived = from ? await memory.phasesOf(path) : undefined;
@@ -2890,7 +2929,7 @@ export namespace Server {
       const interactive = Boolean(body.interactive || from);
       if (!intent) return send(400, { error: "intent is required" });
       if (from) { Pulse.gates.get(path)?.({ decision: "abort" }); Pulse.gates.delete(path); }
-      await memory.teach("SYSTEM ", intent);
+      await memory.teach(body.scope ?? "SYSTEM ", intent);
       const { ms, turns, tool_calls, answer } = await (await agent).design(
         { goal: `The owner just said what this should become. Write the view for GET ${path}.`, intent,
           preferences: preferences === "off" ? [] : await memory.preferences() },
@@ -2959,35 +2998,42 @@ export namespace Server {
     }
 
     /**
-     * capability → program → learning → agent, cheapest first. A program is the agent's own SurrealQL for a
-     * family of operations; it runs without a model once the agent wrote the same one twice.
+     * Deterministic by default: capability → program → learning, cheapest first, and 404 when none of them knows
+     * this address. The agent runs only for a request that DECLARED what the address is, because a declaration is
+     * the one thing nothing compiled was written for. A click can never reach here: no view sends `_meta`.
      */
-    async function resolve(op: RecordId, match: Memory.Match, body: unknown, headers: Record<string, string>, query: string): Promise<Memory.Resolution> {
-      const capability = await memory.find<{ id: RecordId; behavior: Memory.Behavior }>("capability", match);
-      if (capability) return { ...staticBody(capability.behavior), by: String(capability.id) };
+    async function resolve(op: RecordId, match: Memory.Match, body: unknown, headers: Record<string, string>, query: string, declared: string | null): Promise<Memory.Resolution> {
+      if (declared === null) {
+        const capability = await memory.find<{ id: RecordId; behavior: Memory.Behavior }>("capability", match);
+        if (capability) return { ...staticBody(capability.behavior), by: String(capability.id) };
 
-      const program = await memory.program(match);
-      // A program answers the known shape. A request that brings new instructions is asking for something the
-      // program was not written for, so the agent takes it.
-      const instructed = typeof (body as { instructions?: unknown })?.instructions === "string" && (body as { instructions: string }).instructions.trim() !== "";
-      if (program?.promoted && !instructed) {
-        try {
-          const started = Date.now();
-          const result = (await memory.app(program.sql, { ...program.params, data: (body as any)?.data ?? {} })) as unknown[];
-          const last = result.at(-1);
-          const out = program.one && Array.isArray(last) ? last[0] : last;
-          await memory.witness(program.id, op, "ran");
-          return { status: program.status, body: out, by: `${program.id} (${Date.now() - started} ms)` };
-        } catch (e) {
-          // A program that breaks goes back to being a candidate; the agent answers this one.
-          await memory.demote(program.id, String(e));
+        const program = await memory.program(match);
+        let broke = "";
+        if (program?.promoted) {
+          try {
+            const started = Date.now();
+            const result = (await memory.app(program.sql, { ...program.params, data: (body as any)?.data ?? {} })) as unknown[];
+            const last = result.at(-1);
+            const out = program.one && Array.isArray(last) ? last[0] : last;
+            await memory.witness(program.id, op, "ran");
+            return { status: program.status, body: out, by: `${program.id} (${Date.now() - started} ms)` };
+          } catch (e) {
+            // A program that breaks goes back to being a candidate. It does NOT fall through to the agent: the
+            // owner asked for nothing new, so the honest answer is that the address stopped knowing itself.
+            await memory.demote(program.id, String(e));
+            broke = String(e);
+          }
         }
-      }
 
-      const learning = await memory.find<Parameters<Memory["confirm"]>[1]>("learning", match);
-      if (learning) {
-        const promoted = await memory.confirm(op, learning);
-        return { ...staticBody(learning.behavior), by: `${learning.id}${promoted ? " (promoted)" : ""}` };
+        const learning = await memory.find<Parameters<Memory["confirm"]>[1]>("learning", match);
+        if (learning) {
+          const promoted = await memory.confirm(op, learning);
+          return { ...staticBody(learning.behavior), by: `${learning.id}${promoted ? " (promoted)" : ""}` };
+        }
+
+        return { status: 404, by: broke ? "demoted" : "unknown", body: {
+          error: broke ? `${match.method} ${match.path} had a program and it broke: ${broke}` : `nothing knows ${match.method} ${match.path}`,
+          declare: `${match.method} ${match.path} with _meta=<what this address is>` } };
       }
 
       const interpreter = await agent;
@@ -2996,7 +3042,7 @@ export namespace Server {
       // What the system believes this request is, shown on every open page while the agent works on it.
       const size = Object.entries((body ?? {}) as Record<string, unknown>)
         .filter(([, v]) => Array.isArray(v)).map(([k, v]) => `${(v as unknown[]).length} ${k}`).join(" \u00B7 ");
-      const meaning = teachings.at(-1)?.split(/(?<=[.:])\s/)[0] ?? "rota que ningu\u00E9m ensinou: o agente vai deduzir";
+      const meaning = teachings.at(-1)?.split(/(?<=[.:])\s/)[0] ?? declared;
       Pulse.emit("operation", { method: match.method, path: match.path, size, meaning: meaning.slice(0, 160) });
       const { transcript, ms, turns, tool_calls, cost_usd, answer } = await interpreter.resolve(
         { ...match, accept, query, body, teachings, screens: await memory.contracts() }, (sql) => memory.app(sql));
