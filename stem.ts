@@ -21,6 +21,18 @@ import * as acp from "@agentclientprotocol/sdk";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
+import { Cache } from "./cache.ts";
+
+/**
+ * O cache de página do sistema, e ele é UM por processo.
+ *
+ * Nasce em memória com o slug provisório porque o handler existe antes de
+ * `serve()` saber qual sistema é este — `bun --hot` recarrega o handler sem
+ * recriar o processo. `serve()` o reabre com o slug de verdade, e é o slug que
+ * separa dois sistemas Stem no mesmo Redis.
+ */
+let slugAtual = "anon";
+let cache: Cache.Driver = Cache.open(slugAtual);
 
 /** What JSX compiled to, without JSX: h() builds an HTML string, and escape() is the one guard on text. */
 export namespace Html {
@@ -2130,6 +2142,11 @@ export const Pulse = (() => {
     },
 
     emit(event: "working" | "idle" | "changed" | "gesture" | "draft" | "phase" | "gate" | "operation" | "tool", data: object = {}): void {
+      // Uma invalidação, e num lugar só. `changed` já é o sinal que o sistema
+      // emite quando uma view é escrita, quando o tema muda e depois de toda
+      // operação que não é GET — pendurar o cache aqui é o que impede uma
+      // terceira regra de invalidação de nascer ao lado das outras duas.
+      if (event === "changed") void cache.bump().catch(() => {});
       if (event === "operation") pulse.operation = data as Record<string, unknown>;
       if (event === "idle") pulse.operation = undefined;
       if (event === "phase") { const d = data as Record<string, unknown>; pulse.phases.set(String(d.path), { ...d, waiting: pulse.gates.has(String(d.path)) || Boolean(d.awaiting) }); }
@@ -2770,6 +2787,14 @@ export namespace Server {
       console.error("stem reloaded");
       return;
     }
+    // O cache reabre com o slug de verdade ANTES de a primeira página existir:
+    // uma chave gravada como `anon` fica órfã no Redis até vencer, e no dia em
+    // que dois sistemas subirem sem slug elas colidem.
+    if (o.slug) {
+      slugAtual = o.slug;
+      cache.close();
+      cache = Cache.open(o.slug);
+    }
     const memory = await Memory.open(o.db);
     if (o.app) await install(memory, o.app);
     // idleTimeout 0: a design holds a request for minutes and /_events never ends, and Bun's default cuts both at 10 s.
@@ -2875,6 +2900,26 @@ export namespace Server {
 
     /** A page is a stored view rendered with fresh data; the model only runs when there is no view yet. */
     async function page(path: string) {
+      // O cache guarda a PÁGINA pronta, não as queries: medido, `/captacao`
+      // gasta 450 a 770 ms entre ler a view, rodar as queries, ler os tokens e
+      // montar 457 KB de string, e cachear só o meio do caminho deixaria a
+      // montagem — a parte que cresce com o acervo — fora do ganho.
+      //
+      // A primeira versão pulava o cache enquanto `Pulse.working` fosse maior
+      // que zero, e isso estava errado por duas razões que só uma medida
+      // mostrou. `working` é do SERVIDOR: um desenho em /propostas desligava o
+      // cache de /captacao, que não tem nada com aquilo. E o contador FICA
+      // PRESO — medido, `/_events` abria em `working` sem agente nenhum rodando,
+      // e o cache nunca ligava.
+      //
+      // A revisão já resolve o que a guarda tentava resolver: enquanto o desenho
+      // não salva a view, a página corrente continua sendo a página correta, e
+      // no instante em que ele salva o `changed` incrementa e a chave velha
+      // morre. Correção por invariante, não por bandeira.
+      const rev = await cache.rev();
+      const chave = Cache.pageKey(slugAtual, rev, path);
+      const pronto = await cache.get(chave);
+      if (pronto) return send(200, pronto, HTML, { "x-resolved-by": `cache (${cache.name})` });
       const found = await memory.viewFor(path);
       let spec = found?.spec;
       const params = found?.params ?? {};
@@ -2896,7 +2941,13 @@ export namespace Server {
       const body = (Object.keys(errors).length
         ? `<div role="alert" class="alert alert-error m-4 text-sm">a view ${path} tem query quebrada: ${Object.keys(errors).join(", ")}</div>` : "")
         + View.render(spec, data, params);
-      return send(200, View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), head: current.head, bootstrap: by === "bootstrap" || by === "designing" }), HTML, { "x-resolved-by": by });
+      const html = View.Shell({ title: spec.title ?? path, body, path, tokens: await memory.tokens(), head: current.head, bootstrap: by === "bootstrap" || by === "designing" });
+      // A página do agente e a que tem query quebrada não entram: a primeira é
+      // resultado de um desenho que acabou de acontecer, a segunda é um defeito,
+      // e guardar qualquer uma das duas por meio minuto congela justamente o que
+      // alguém está prestes a consertar.
+      if (by.startsWith("view") && !Object.keys(errors).length) await cache.set(chave, html);
+      return send(200, html, HTML, { "x-resolved-by": by });
     }
 
     /**
