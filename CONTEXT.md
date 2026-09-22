@@ -91,11 +91,36 @@ Ficam só dois toques: `g d` abre o design system e `o` contorna as componentes.
 - A dobra que espera vira instrução, não campo: `gate {path, continue | revise}` pelo MCP.
 - O SSE, o `develop()` e o `paintDraft()` ficam inteiros: é por eles que o agente desenha ao vivo.
 
+## Uma rota do app é por onde entra o que não é SQL
+
+**O `routes` do `app.ts` é o único lugar onde uma capacidade TypeScript — um
+socket, um client, um SDK — responde a um endereço deste sistema.** Tudo o mais
+que uma rota faz é SurrealQL contra o SurrealKV local, e SurrealQL não abre
+socket: sem este campo, um sistema Stem só sabe o que ele próprio guardou.
+
+A chave é a MESMA do `teach`, e o par é o ponto: `teach` diz o que o endereço
+significa, `routes` diz quem o responde. Uma rota não é operação — ela não é
+gravada, não vira aprendizado e nunca é promovida a `program`. A memória é como
+este sistema aprende o que um endereço deveria significar; uma capacidade já
+sabe.
+
+```
+app.ts   teach:  { "POST /zap/send": "manda a mensagem para o cliente" }
+         routes: { "POST /zap/send": (req) => zap.send(await req.json()) }
+```
+
+A ordem de declaração no `Server.app()` É a regra de precedência: os `/_*` do
+kernel primeiro, o `mount()` do app depois, e o `*` da memória por último. Por
+isso `Server.mount` recusa no boot uma chave fora de `"METHOD /path"` ou um
+caminho em `/_` — uma rota que some em silêncio só aparece em produção. A prova
+está em `tests/apps/stem/routes.spec.ts`.
+
 ## A resolução, do mais barato ao mais caro
 
 ```
 com _meta      o agente: é a única coisa que ele não podia ter compilado antes
 GET text/html  view guardada → render com a query (3 ms) · sistema vazio → bootstrap
+rota do app    o handler TypeScript do `routes`, antes da memória ver o pedido
 outra rota     capability estática → program promovido (20 ms) → learning → 404
 ```
 

@@ -4,7 +4,7 @@
 // an operation, a known capability answers it without a model, and what repeats crystallizes into something that
 // runs without one. The screen, the backend and the design are born from use. Nothing wakes the agent on its own:
 // `_meta` is the one door, and an address nobody declared answers 404 instead of improvising.
-//   bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+//   bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>|--no-agent] [--tools json|mcp]
 //   bun stem.ts check <app>.ts — the rules the app claims, verified; exits 1 when one is broken
 //   bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 //   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp
@@ -2134,6 +2134,9 @@ export const Pulse = (() => {
     phases: new Map<string, Record<string, unknown>>(),
     /** Paths under an edit: a sketch there is dropped, because the owner is looking at the working screen. */
     editing: new Set<string>(),
+    /** Paths with a design in flight. `working` is a SERVER counter and it dips to zero between the agent's
+     * runs; measured 22/09, a page polled every 5 s through those dips started 3 designs for one declaration. */
+    designing: new Set<string>(),
     /** The operation the agent is on, so a page opened mid-run reads it too. */
     operation: undefined as Record<string, unknown> | undefined,
 
@@ -2691,7 +2694,8 @@ export namespace Server {
     app?: string;
     db: string;
     port: number;
-    agent: string;
+    /** O comando ACP, ou `undefined` com `--no-agent`: servir não exige modelo. */
+    agent?: string;
     tools: string;
     slug?: string;
     open: boolean;
@@ -2708,6 +2712,16 @@ export namespace Server {
     tokens?: Record<string, string>;
     /** scope → instruction, the same pair the `teach` tool takes: `"SYSTEM "` or `"METHOD /path"`. */
     teach?: Record<string, string>;
+    /**
+     * Routes only this system has, keyed by the SAME grammar `teach` uses — `"GET /health"`, `"POST /zap/send"` —
+     * so the pair reads as one thing: `teach` says what the address means, `routes` answers it. This is where a
+     * capability that is not SQL enters: a socket, an HTTP client, an SDK. The kernel's own `/_*` addresses win,
+     * and an app route shadows nothing; it sits between them and the `*` that resolves by memory.
+     *
+     * A route here is NOT an operation: it is not recorded, not learned from and never promoted to a program.
+     * Memory is how this system learns what an address should mean; a capability already knows.
+     */
+    routes?: Record<string, (req: Request, params: Record<string, string>) => Response | Promise<Response>>;
     /** Raw HTML appended to every page's <head>: where an app loads its own webfont. */
     head?: string;
     /**
@@ -2775,7 +2789,7 @@ export namespace Server {
     // At boot a broken rule is news, never a reason to refuse service: a running system with a contrast
     // regression still answers its clients. `stem check` is the same function with an exit code, for a build.
     const broken = Rules.report(Rules.check(app));
-    console.error(`app ${path} · tokens ${Object.keys(app.tokens ?? {}).length} · taught ${taught} · rules ${broken ? `${broken} broken` : "ok"}`);
+    console.error(`app ${path} · tokens ${Object.keys(app.tokens ?? {}).length} · taught ${taught} · routes ${Object.keys(app.routes ?? {}).length} · rules ${broken ? `${broken} broken` : "ok"}`);
   }
 
   export async function serve(o: Options) {
@@ -2801,13 +2815,25 @@ export namespace Server {
     const server = Bun.serve({ port: o.port, idleTimeout: 0, fetch: () => new Response("starting", { status: 503 }) });
     const base = `http://localhost:${server.port}`;
     // The handler is live before the agent starts: its session connects to /_mcp as it opens.
-    const agent = Interpreter.start(o.agent, o.tools === "mcp" ? `${base}/_mcp` : undefined);
+    const agent = o.agent
+      ? Interpreter.start(o.agent, o.tools === "mcp" ? `${base}/_mcp` : undefined)
+      : Promise.reject(new Error("este sistema subiu com --no-agent: desenhar, compilar e julgar precisam de um agente ACP"));
     Interpreter.remember = (p) => memory.prefer(p, []);
     Interpreter.keep = (p) => memory.keepPhase(p);
     server.reload({ fetch: app(memory, agent).fetch });
     kept.stem = { server, memory, agent };
-    const interpreter = await agent;
-    console.error(`stem on :${server.port} · db ${o.db} · agent ${interpreter.agent} · tools ${o.tools}`);
+    // O agente NÃO é condição para servir. Um sistema que já tem view guardada e rotas
+    // declaradas atende sem modelo nenhum — e é isso que o deixa caber num container de
+    // produção, onde não há assinatura, ACP nem credencial. Antes desta linha um
+    // `claude-agent-acp` ausente derrubava o processo INTEIRO com `ACP connection
+    // closed`, e a porta que ia substituir o via-api não subia em lugar nenhum.
+    // Quem PRECISA dele — desenhar, compilar, julgar — continua falhando na rota, que é
+    // onde o erro tem endereço.
+    const interpreter = await agent.catch((e: unknown) => {
+      console.error(`stem sem agente · ${String(e)} · desenhar e julgar vão falhar; servir a view guardada e as rotas do app, não`);
+      return undefined;
+    });
+    console.error(`stem on :${server.port} · db ${o.db} · agent ${interpreter ? interpreter.agent : "nenhum"} · tools ${o.tools}`);
     let url = `${base}/`;
     if (o.slug) {
       const slug = o.slug;
@@ -2817,6 +2843,21 @@ export namespace Server {
       process.on("SIGINT", leave).on("SIGTERM", leave);
     }
     if (o.open) process.getBuiltinModule("node:child_process").execFile("open", [url]);
+  }
+
+  /**
+   * Hangs an app's routes on the router. Separate from `app()` because the two rules it enforces are the whole
+   * contract and a caller must be able to read them fail: the key is `"METHOD /path"`, and `/_` belongs to the
+   * kernel. A scope that is neither throws at boot — the alternative is a route silently absent in production.
+   */
+  export function mount(hono: Hono, routes: NonNullable<App["routes"]>) {
+    for (const [scope, handler] of Object.entries(routes)) {
+      const [method, path] = scope.split(" ");
+      if (!method || !path?.startsWith("/")) throw new Error(`route ${JSON.stringify(scope)} is not "METHOD /path"`);
+      if (path.startsWith("/_")) throw new Error(`route ${JSON.stringify(scope)} would shadow the kernel`);
+      hono.on(method.toUpperCase(), path, (c) => handler(c.req.raw, c.req.param() as Record<string, string>));
+    }
+    return hono;
   }
 
   export function app(memory: Memory, agent: Promise<Interpreter>) {
@@ -2872,6 +2913,9 @@ export namespace Server {
       });
     }
     hono.post("/_judge", async (c) => judge(((await readBody(c.req.raw)) ?? {}) as Record<string, string>));
+    // The app's own routes, after every `/_*` of the kernel and before the `*` that resolves by memory. Hono
+    // matches in declaration order, so this placement IS the precedence rule.
+    mount(hono, current.routes ?? {});
     hono.all("*", async (c) => {
       const url = new URL(c.req.url);
       const match = { method: c.req.method, path: url.pathname };
@@ -2881,6 +2925,13 @@ export namespace Server {
       // Empty reads the declaration back instead of writing one.
       const declared = url.searchParams.get("_meta") ?? (typeof (body as { _meta?: unknown })?._meta === "string" ? (body as { _meta: string })._meta : null);
       if (declared !== null && declared.trim() === "") return send(200, await believes(match));
+      // A page that DECLARES does not wait for the design: it gets the same shell a second visitor
+      // gets, and the Pulse fills it in. Measured 22/09: awaiting here held one GET open for 422 s.
+      if (declared !== null && html) {
+        Pulse.designing.add(match.path);
+        void declare(match, declared.trim(), html).catch((e) => console.error("[declare]", String(e)));
+        return page(match.path, true);
+      }
       if (declared !== null) await declare(match, declared.trim(), html);
       if (html) return page(match.path);
       const headers = Object.fromEntries(c.req.raw.headers);
@@ -2899,7 +2950,7 @@ export namespace Server {
     return hono;
 
     /** A page is a stored view rendered with fresh data; the model only runs when there is no view yet. */
-    async function page(path: string) {
+    async function page(path: string, declaring = false) {
       // O cache guarda a PÁGINA pronta, não as queries: medido, `/captacao`
       // gasta 450 a 770 ms entre ler a view, rodar as queries, ler os tokens e
       // montar 457 KB de string, e cachear só o meio do caminho deixaria a
@@ -2924,6 +2975,10 @@ export namespace Server {
       let spec = found?.spec;
       const params = found?.params ?? {};
       let by = found && found.path !== path ? `view ${found.path}` : "view";
+      // The request that just declared is the first one designing, and `Pulse.working` only rises when the
+      // agent actually starts (see `Pulse.working++`): trusting it here would race, and the loser of that race
+      // starts a SECOND design on the same path.
+      if (!spec && (declaring || Pulse.designing.has(path))) { spec = View.BOOTSTRAP; by = "designing"; }
       if (!spec && path === "/" && (await memory.empty())) { spec = View.BOOTSTRAP; by = "bootstrap"; }
       // An agent is already designing: show the blank page with the drafting pill instead of starting a second
       // design on this GET (which also held the request open for minutes).
@@ -2958,10 +3013,14 @@ export namespace Server {
     async function declare(match: Memory.Match, text: string, html: boolean) {
       const scope = `${match.method} ${match.path}`;
       if (!html) return void (await memory.teach(scope, text));
-      const found = await memory.viewFor(match.path);
-      if (!found) return void (await intent({ intent: text, path: match.path, scope }));
-      await memory.teach(scope, text);
-      await feedback({ path: match.path, target: "page", instruction: text });
+      try {
+        const found = await memory.viewFor(match.path);
+        if (!found) return void (await intent({ intent: text, path: match.path, scope }));
+        await memory.teach(scope, text);
+        await feedback({ path: match.path, target: "page", instruction: text });
+      } finally {
+        Pulse.designing.delete(match.path);
+      }
     }
 
     /** What this address believes it is today: every declaration in order, and what answers it without a model. */
@@ -3243,7 +3302,7 @@ addEventListener("message", (e) => {
 /** The two verbs of the command line, parsed into what main() dispatches. */
 export namespace Cli {
   export const USAGE = `usage:
-  bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>] [--tools json|mcp]
+  bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>|--no-agent] [--tools json|mcp]
   bun stem.ts check <app>.ts                    the rules the app claims, verified; exits 1 on the first broken one
   bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 
@@ -3268,7 +3327,7 @@ export namespace Cli {
         app: positionals[0],
         db: Memory.address({ db: flag("--db"), fresh, cwd: process.cwd() }),
         port: Number(flag("--port") ?? (slug ? 0 : 3000)),
-        agent, tools: flag("--tools") ?? "json", slug,
+        agent: rest.includes("--no-agent") ? undefined : agent, tools: flag("--tools") ?? "json", slug,
         open: fresh && !rest.includes("--no-open"),
       } };
     }
@@ -3285,7 +3344,10 @@ async function main() {
   const command = Cli.parse(process.argv.slice(2));
   // check needs no Claude account: it reads the app file and does arithmetic, which is why it belongs in a build.
   if (command.verb === "check") return Server.checkApp(command.app);
-  if (command.verb !== "usage") Acp.Account.resolve(command.account);
+  // `--no-agent` não pergunta a assinatura porque não há agente a pagar: um sistema que
+  // só serve a view guardada e as rotas do app roda em produção, onde não existe conta.
+  const semAgente = command.verb === "serve" && !command.options.agent;
+  if (command.verb !== "usage" && !semAgente) Acp.Account.resolve(command.account);
   switch (command.verb) {
     case "serve": return Server.serve(command.options);
     case "acp caps": return Acp.Commands.caps(command.agent);
