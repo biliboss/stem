@@ -116,10 +116,23 @@ Isto substitui a H3 como caminho padrão: o agente de operação vira o fallback
 tela declarou. Continua valendo a ressalva da H3 — programa escrito não é programa provado; um
 UPDATE errado que não quebra passa.
 
+## H5 — o programa promovido concorda com o agente que o escreveu
+
+O H4 fez do programa o caminho padrão, e hoje só o programa que QUEBRA é rebaixado: uma SQL
+errada que roda escreve dado errado e ninguém vê. A H5 reexecuta cada operação já gravada contra
+o programa promovido, numa CÓPIA do banco, e compara o estado resultante com o que o agente
+produziu. Era a H3b da lista de próximas; virou hipótese numerada porque agora tem medida.
+
+- medida: `divergences` por operação — campo que difere entre o estado do agente e o do programa,
+  ignorando `time::now()`; um programa só vale se diverge zero em todas
+- controle POSITIVO: um `MERGE` plantado errado (um campo trocado) tem de ser DETECTADO; um
+  harness que não acha o erro plantado não mediu nada, e zero divergência dele não é prova
+- isolamento: cópia do `.skv`, nunca o banco de um sistema do dono · N ≥ 10 operações reais
+- script: `experiments/h5-replay.sh` · bruto: `experiments/results/h5-<data>.jsonl`
+- **veredito: em aberto**
+
 ## Próximas, em ordem
 
-- **H3b** — replay: rodar o programa promovido contra as operações que o agente resolveu, numa cópia
-  do banco, e contar divergências. Um programa só vale se diverge zero.
-
-- **H4** — prompts versionados no banco tornam uma `execution` reexecutável: mesmo prompt@versão
+- **H6** — prompts versionados no banco tornam uma `execution` reexecutável: mesmo prompt@versão
   e mesmo estado de entrada dão uma view equivalente. Medida: diff estrutural entre os specs.
+  Era H4 na lista, nome que o veredito de 14/09 já usava.
