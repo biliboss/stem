@@ -1,0 +1,223 @@
+<!doctype html>
+<!-- PROTOTYPE of the kickstart: what /_stem shows while an app is empty. A guided flow instead of a blank page:
+     what (1) → why (2) → how, as the agent understood it (3) → options of the component (4) → the result (5).
+     Every state is a URL (?step=1…5), so each one can be photographed for the docs. Static HTML in the kernel's
+     world; the kernel does not serve it yet. -->
+<html lang="en" data-theme="kernel">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hello_world · kickstart</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans@5/index.css" rel="stylesheet">
+<style>
+  :root { --base-100: oklch(98.6% .002 247); --base-200: oklch(96.3% .003 247); --base-300: oklch(91.2% .005 247);
+    --ink: oklch(21% .012 257); --muted: oklch(21% .012 257 / .62); --faint: oklch(21% .012 257 / .42);
+    --primary: oklch(35% .075 258); --primary-soft: oklch(35% .075 258 / .08); --success: oklch(50% .08 155); --warn: oklch(62% .13 55);
+    --radius: .5rem; --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; background: var(--base-100); color: var(--ink);
+    font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  code, .mono { font-family: var(--mono); font-size: .8125rem; }
+  header { display: flex; align-items: center; gap: 1rem; padding: 1rem 2rem; border-bottom: 1px solid var(--base-300); }
+  .mark { width: 1.375rem; height: 1.375rem; border-radius: .375rem; background: var(--ink); display: grid; place-items: center; }
+  .mark::after { content: ""; width: .375rem; height: .75rem; border-radius: 1rem; background: var(--base-100); transform: translateY(1px); }
+  .name { font-weight: 640; letter-spacing: -.01em; }
+  .facts { display: flex; gap: 1.25rem; color: var(--muted); font-size: .8125rem; }
+  .facts span { display: inline-flex; align-items: center; gap: .375rem; }
+  .dot { width: .4375rem; height: .4375rem; border-radius: 1rem; background: var(--success); display: inline-block; }
+  .dot.busy { background: var(--primary); animation: breathe 1.2s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .35; } }
+  nav { margin-left: auto; display: flex; gap: .25rem; font-size: .875rem; }
+  nav a { padding: .375rem .625rem; border-radius: .375rem; color: var(--muted); text-decoration: none; }
+  nav a[aria-current] { color: var(--ink); background: var(--base-200); font-weight: 560; }
+
+  main { max-width: 52rem; margin: 0 auto; padding: 3rem 2rem 4rem; }
+  .rail { display: flex; gap: .375rem; margin-bottom: 2.5rem; }
+  .rail li { list-style: none; flex: 1; }
+  .rail span { display: block; height: 3px; border-radius: 2px; background: var(--base-300); }
+  .rail li.done span { background: var(--ink); }
+  .rail li.now span { background: var(--primary); }
+  .rail b { display: block; margin-top: .5rem; font-size: .75rem; font-weight: 520; color: var(--faint); }
+  .rail li.done b, .rail li.now b { color: var(--ink); }
+  .said { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+  .said span { font-size: .8125rem; padding: .25rem .625rem; border-radius: 1rem; background: var(--base-200); color: var(--muted); }
+  .said span b { color: var(--ink); font-weight: 560; }
+  h1 { font-size: 2.25rem; font-weight: 640; line-height: 1.12; letter-spacing: -.025em; text-wrap: balance; }
+  .lede { margin-top: .625rem; max-width: 36rem; font-size: 1.0625rem; color: var(--muted); }
+
+  .choices { display: grid; gap: .75rem; margin-top: 2rem; }
+  .choices.three { grid-template-columns: repeat(3, 1fr); }
+  .choice { display: block; text-align: left; font: inherit; color: inherit; background: var(--base-100); border: 0; cursor: pointer;
+    padding: 1.125rem 1.125rem 1.25rem; border-radius: var(--radius); box-shadow: 0 0 0 1px var(--base-300); }
+  .choice:hover { box-shadow: 0 0 0 1px oklch(21% .012 257 / .3); }
+  .choice[aria-pressed=true] { box-shadow: 0 0 0 2px var(--primary); background: var(--primary-soft); }
+  .choice strong { display: block; font-size: 1rem; font-weight: 620; }
+  .choice small { display: block; margin-top: .25rem; font-size: .875rem; color: var(--muted); line-height: 1.45; }
+  .glyph { display: block; width: 1.75rem; height: 1.75rem; margin-bottom: .875rem; color: var(--primary); }
+  .own { margin-top: 1rem; display: flex; gap: .5rem; }
+  .own input { flex: 1; font: inherit; font-size: 1rem; padding: .75rem .875rem; border: 0; border-radius: var(--radius); background: var(--base-100);
+    box-shadow: 0 0 0 1px var(--base-300), 0 8px 22px -18px oklch(21% .012 257 / .35); color: var(--ink); }
+  .own input:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); }
+  .btn { font: inherit; font-weight: 560; font-size: .9375rem; padding: .6875rem 1.125rem; border-radius: var(--radius); border: 0; cursor: pointer;
+    background: var(--ink); color: var(--base-100); }
+  .btn.ghost { background: transparent; color: var(--muted); box-shadow: 0 0 0 1px var(--base-300); }
+  .actions { display: flex; gap: .625rem; margin-top: 2rem; align-items: center; }
+  .cost { margin-left: auto; font-size: .8125rem; color: var(--faint); }
+  .hint { margin-top: .75rem; font-size: .8125rem; color: var(--faint); }
+
+  .plan { margin-top: 2rem; border-top: 1px solid var(--base-300); }
+  .plan div { display: grid; grid-template-columns: 7rem 1fr; gap: 1.25rem; padding: 1.125rem 0; border-bottom: 1px solid var(--base-300); }
+  .plan dt { font-size: .8125rem; font-weight: 600; letter-spacing: .01em; color: var(--primary); padding-top: .125rem; }
+  .plan dd { font-size: 1rem; }
+  .plan dd small { display: block; margin-top: .25rem; color: var(--muted); font-size: .875rem; }
+  .plan code { background: var(--base-200); padding: .0625rem .3125rem; border-radius: .25rem; }
+
+  .options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
+  .opt { padding: 0; overflow: hidden; }
+  .opt .pv { height: 12.5rem; padding: .875rem; background: var(--base-200); border-bottom: 1px solid var(--base-300); font-size: .75rem; }
+  .opt .cap { padding: .875rem 1rem 1rem; }
+  .pv .t { display: flex; align-items: center; gap: .5rem; padding: .375rem .5rem; margin-bottom: .3125rem; border-radius: .3125rem; background: var(--base-100); box-shadow: 0 0 0 1px var(--base-300); }
+  .pv .box { width: .75rem; height: .75rem; border-radius: .1875rem; box-shadow: inset 0 0 0 1.5px oklch(21% .012 257 / .35); flex: none; }
+  .pv .box.on { background: var(--ink); box-shadow: none; }
+  .pv .t.x { color: var(--faint); text-decoration: line-through; }
+  .pv .due { margin-left: auto; color: var(--faint); font-size: .6875rem; }
+  .pv .due.late { color: var(--warn); font-weight: 600; }
+  .pv h6 { font-size: .6875rem; font-weight: 620; color: var(--muted); margin: .375rem 0 .3125rem .125rem; }
+  .pv .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .375rem; height: 100%; }
+  .pv .col { background: oklch(21% .012 257 / .035); border-radius: .3125rem; padding: .375rem; }
+  .pv .card { padding: .375rem .4375rem; margin-bottom: .3125rem; border-radius: .25rem; background: var(--base-100); box-shadow: 0 0 0 1px var(--base-300); font-size: .6875rem; line-height: 1.3; }
+
+  .result { margin-top: 2rem; display: grid; grid-template-columns: 1fr 16rem; gap: 2rem; align-items: start; }
+  .shot { border-radius: var(--radius); box-shadow: 0 0 0 1px var(--base-300), 0 18px 40px -26px oklch(21% .012 257 / .45); overflow: hidden; background: var(--base-100); }
+  .bar { display: flex; align-items: center; gap: .375rem; padding: .5rem .75rem; border-bottom: 1px solid var(--base-300); background: var(--base-200); font-size: .75rem; color: var(--muted); }
+  .bar i { width: .5rem; height: .5rem; border-radius: 1rem; background: var(--base-300); }
+  .bar code { margin-left: .5rem; font-size: .75rem; }
+  .app { padding: 1.25rem 1.375rem 1.5rem; }
+  .app h3 { font-size: 1.25rem; font-weight: 640; letter-spacing: -.01em; }
+  .app .add { display: flex; gap: .5rem; margin: 1rem 0 .75rem; }
+  .app .add span { flex: 1; padding: .5rem .625rem; border-radius: .375rem; box-shadow: 0 0 0 1px var(--base-300); color: var(--faint); font-size: .875rem; }
+  .app .add b { padding: .5rem .75rem; border-radius: .375rem; background: var(--ink); color: var(--base-100); font-size: .8125rem; font-weight: 560; }
+  .app h6 { font-size: .75rem; font-weight: 620; color: var(--muted); margin: 1rem 0 .375rem; }
+  .app .t { display: flex; align-items: center; gap: .625rem; padding: .5rem 0; border-bottom: 1px solid var(--base-300); font-size: .9375rem; }
+  .app .box { width: .9375rem; height: .9375rem; border-radius: .25rem; box-shadow: inset 0 0 0 1.5px oklch(21% .012 257 / .35); }
+  .app .due { margin-left: auto; font-size: .8125rem; color: var(--faint); }
+  .app .due.late { color: var(--warn); font-weight: 600; }
+  .log h2 { font-size: 1rem; font-weight: 620; margin-bottom: .5rem; }
+  .log li { list-style: none; display: grid; grid-template-columns: .5rem 1fr; gap: .625rem; padding: .625rem 0; border-top: 1px solid var(--base-300); font-size: .8125rem; }
+  .log li i { width: .5rem; height: .5rem; border-radius: 1rem; margin-top: .375rem; }
+  .log li span { color: var(--muted); display: block; }
+  .log li b { font-weight: 560; }
+
+  section.step { display: none; } body[data-step="1"] #s1, body[data-step="2"] #s2, body[data-step="3"] #s3, body[data-step="4"] #s4, body[data-step="5"] #s5 { display: block; }
+  @media (max-width: 52rem) {
+    header { flex-wrap: wrap; padding: .875rem 1.25rem; } .facts { width: 100%; order: 3; flex-wrap: wrap; gap: .25rem .875rem; } nav { display: none; }
+    main { padding: 2rem 1.25rem 3rem; } h1 { font-size: 1.75rem; }
+    .choices.three, .options, .result { grid-template-columns: 1fr; } .rail b { display: none; } .own { flex-direction: column; }
+    .plan div { grid-template-columns: 1fr; gap: .25rem; }
+  }
+</style>
+</head>
+<body data-step="1">
+<header>
+  <span class="mark" aria-hidden="true"></span><span class="name">hello_world</span>
+  <div class="facts"><span><i class="dot" id="dot"></i><span id="status">agent idle</span></span><span class="mono">localhost:5330</span><span>claude-agent-acp · personal</span></div>
+  <nav aria-label="stem"><a aria-current="page" href="#">Kickstart</a><a href="#">Screens</a><a href="#">API</a><a href="#">Memory</a><a href="#">Agent</a></nav>
+</header>
+<main>
+  <ol class="rail" id="rail"><li><span></span><b>What</b></li><li><span></span><b>Why</b></li><li><span></span><b>How</b></li><li><span></span><b>Pick</b></li><li><span></span><b>Done</b></li></ol>
+
+  <section class="step" id="s1">
+    <h1>What should hello_world do?</h1>
+    <p class="lede">Start from what you need, not from how to build it. You can change your mind at every step.</p>
+    <div class="choices three">
+      <button class="choice" aria-pressed="true"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13h8M8 16h5"/></svg><strong>Build an interface</strong><small>A screen people open and use: a list, a form, a dashboard.</small></button>
+      <button class="choice"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12h5l2-5 3 10 2-5h4"/></svg><strong>Automate a process</strong><small>Something that runs on its own when something happens.</small></button>
+      <button class="choice"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="12" cy="17" r="3"/><path d="M9.5 8.5l1.5 6M14.5 8.5l-1.5 6"/></svg><strong>Model my business</strong><small>The things your work keeps track of: customers, orders, tasks.</small></button>
+    </div>
+    <div class="own"><input value="I want to manage my to-do list" aria-label="Say it in your words"><button class="btn">Continue</button></div>
+    <p class="hint">Or say it in your own words. Nothing is built until step 4.</p>
+  </section>
+
+  <section class="step" id="s2">
+    <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span></div>
+    <h1>Why do you want it?</h1>
+    <p class="lede">What should be different once it exists? The answer decides what the screen puts first.</p>
+    <div class="choices">
+      <button class="choice"><strong>I forget things I promised</strong><small>What is due soon should never slip out of sight.</small></button>
+      <button class="choice" aria-pressed="true"><strong>I want to see what is late</strong><small>Open it and know at once what needs you today.</small></button>
+      <button class="choice"><strong>My team doesn't know who does what</strong><small>Every task has an owner, and everyone sees it.</small></button>
+    </div>
+    <div class="own"><input placeholder="Or tell it why, in your words" aria-label="Why, in your words"><button class="btn">Continue</button></div>
+    <p class="hint">These three options come from your first answer.</p>
+  </section>
+
+  <section class="step" id="s3">
+    <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span><span>see what is late</span></div>
+    <h1>Here is the plan.</h1>
+    <p class="lede">Read it before anything is built. This is the cheapest moment to be wrong.</p>
+    <dl class="plan">
+      <div><dt>WHY</dt><dd>Open the app and know at once what needs you today.</dd></div>
+      <div><dt>HOW</dt><dd>One list, sorted by what is late, then by due date. Done tasks sink to the bottom.<small>Adding a task takes one line: a title, and a date if it has one.</small></dd></div>
+      <div><dt>WHAT</dt><dd>A <b>task</b>: title, due date, done.<small>A screen at <code>/tasks</code> and an endpoint at <code>/api/tasks</code>, so other tools can add tasks too.</small></dd></div>
+    </dl>
+    <div class="actions"><button class="btn">Looks right</button><button class="btn ghost">Change something</button><span class="cost">this plan cost $0.03</span></div>
+  </section>
+
+  <section class="step" id="s4">
+    <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span><span>see what is late</span></div>
+    <h1>Three ways to show your tasks.</h1>
+    <p class="lede">Pick the one closest to how you think. You can switch later.</p>
+    <div class="options">
+      <button class="choice opt"><div class="pv">
+        <div class="t"><i class="box"></i>Pay the power bill<span class="due late">2 days late</span></div>
+        <div class="t"><i class="box"></i>Call the accountant<span class="due late">yesterday</span></div>
+        <div class="t"><i class="box"></i>Buy bread<span class="due">today</span></div>
+        <div class="t"><i class="box"></i>Book the dentist<span class="due">Fri</span></div>
+        <div class="t x"><i class="box on"></i>Renew passport</div>
+      </div><div class="cap"><strong>A checklist</strong><small>One list, late first. The fastest to scan.</small></div></button>
+      <button class="choice opt" aria-pressed="true"><div class="pv">
+        <h6>Late</h6><div class="t"><i class="box"></i>Pay the power bill<span class="due late">2d</span></div>
+        <h6>Today</h6><div class="t"><i class="box"></i>Buy bread</div>
+        <h6>This week</h6><div class="t"><i class="box"></i>Book the dentist<span class="due">Fri</span></div>
+      </div><div class="cap"><strong>Grouped by when</strong><small>Late, today, this week. Answers "what now?"</small></div></button>
+      <button class="choice opt"><div class="pv"><div class="cols">
+        <div class="col"><h6>To do</h6><div class="card">Book the dentist</div><div class="card">Buy bread</div></div>
+        <div class="col"><h6>Doing</h6><div class="card">Pay the power bill</div></div>
+        <div class="col"><h6>Done</h6><div class="card">Renew passport</div></div>
+      </div></div><div class="cap"><strong>A board</strong><small>Columns you drag across. Better for steps.</small></div></button>
+    </div>
+    <div class="actions"><button class="btn">Build this one</button><button class="btn ghost">Show me three more</button><span class="cost">three options cost $0.05</span></div>
+  </section>
+
+  <section class="step" id="s5">
+    <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span><span>see what is late</span><span>grouped by when</span></div>
+    <h1>Your tasks are ready.</h1>
+    <p class="lede">hello_world has its first screen and its first endpoint. From now on, opening it costs nothing.</p>
+    <div class="result">
+      <div class="shot"><div class="bar"><i></i><i></i><i></i><code>localhost:5330/tasks</code></div><div class="app">
+        <h3>Tasks</h3>
+        <div class="add"><span>Add a task… (e.g. "call mom friday")</span><b>Add</b></div>
+        <h6>Late</h6>
+        <div class="t"><i class="box"></i>Pay the power bill<span class="due late">2 days late</span></div>
+        <div class="t"><i class="box"></i>Call the accountant<span class="due late">yesterday</span></div>
+        <h6>Today</h6>
+        <div class="t"><i class="box"></i>Buy bread<span class="due">today</span></div>
+        <h6>This week</h6>
+        <div class="t"><i class="box"></i>Book the dentist<span class="due">Fri</span></div>
+      </div></div>
+      <div class="log"><h2>What happened</h2><ul>
+        <li><i style="background:var(--primary)"></i><div><b>The agent designed /tasks</b><span>2 phases · 48 s · $0.14</span></div></li>
+        <li><i style="background:var(--success)"></i><div><b>Program for POST /api/tasks</b><span>written with the screen · answers in ~20 ms</span></div></li>
+        <li><i style="background:oklch(21% .012 257 / .3)"></i><div><b>/tasks is cached</b><span>next visit ~3 ms, no model</span></div></li>
+      </ul><div class="actions" style="margin-top:1.25rem"><button class="btn">Open /tasks</button></div></div>
+    </div>
+  </section>
+</main>
+<script>
+  const step = Number(new URLSearchParams(location.search).get("step") || 1);
+  document.body.dataset.step = step;
+  [...document.querySelectorAll("#rail li")].forEach((li, i) => li.className = i + 1 < step ? "done" : i + 1 === step ? "now" : "");
+  if (step === 3 || step === 4) { document.getElementById("dot").classList.add("busy"); document.getElementById("status").textContent = "working"; }
+</script>
+</body>
+</html>
