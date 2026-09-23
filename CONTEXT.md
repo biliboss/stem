@@ -87,7 +87,7 @@ onde as duas divergem; o que sobra na tela é leitura — a dobra, a régua, o r
 
 Ficam só dois toques: `g d` abre o design system e `o` contorna as componentes. Nenhum dos dois muda o sistema.
 
-- A tela em branco IMPRIME a linha que abre a porta (`claude mcp add … <origem>/_mcp`), preenchida no cliente com o `location.origin`.
+- A tela em branco ENSINA primeiro `GET <origem>/?_meta=o que esta tela é`, a query que o dono digita na barra do navegador, e o MCP (`claude mcp add … <origem>/_mcp`) depois, como segunda porta; o `<origem>` se preenche no cliente com o `location.origin`. Até 23/09 ela ensinava só o MCP. O dono inverteu a ordem porque a barra de endereço é a porta que ele usa primeiro. É TEXTO, e o `meta.spec.ts` recusa qualquer href, action, src ou fetch com `_meta` na Shell.
 - A dobra que espera vira instrução, não campo: `gate {path, continue | revise}` pelo MCP.
 - O SSE, o `develop()` e o `paintDraft()` ficam inteiros: é por eles que o agente desenha ao vivo.
 

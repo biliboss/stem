@@ -743,11 +743,14 @@ export namespace View {
           c,
           !c && p.empty && h("li", { class: "py-4 kernel-muted" }, escape(p.empty)))) as Render,
       /** Kernel-only: the screen of a system that was never told anything. Not offered to the agent. */
-      /** The screen has no way in: every gesture arrives by MCP, and this is where that is said out loud. */
+      /** The screen has no way in: it TEACHES the query that declares an address, typed by the owner in the
+       *  address bar, and the MCP as the second door. Text only — no link, form or fetch carries `_meta`. */
       Blank: ((p) => h("main", { class: "kernel-blank" },
           h("h1", { class: "kernel-display" }, escape(String(p.title ?? ""))),
           h("p", { class: "kernel-hint" }, escape(String(p.hint ?? ""))),
-          h("pre", { class: "kernel-mcp" }, h("code", { id: "kernel-mcp-line" }, "claude mcp add --transport http --scope local system <origem>/_mcp")),
+          h("pre", { class: "kernel-mcp" }, h("code", null, "GET ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/?_meta=o que esta tela \u00E9")),
+          h("p", { class: "kernel-hint" }, "Ou pela porta do MCP:"),
+          h("pre", { class: "kernel-mcp" }, h("code", null, "claude mcp add --transport http --scope local system ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/_mcp")),
           h("p", { class: "kernel-hint" },
               h("kbd", { class: "kbd" }, "g"),
               h("kbd", { class: "kbd" }, "d"),
@@ -1158,9 +1161,8 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
           // The dock hides when the work ends, so the list starts clean on the next one.
           pulse.addEventListener('idle', () => { toolRows.clear(); toolList.replaceChildren(); });
 
-          // The address of the one door, written where the blank screen can read it.
-          const mcpLine = document.getElementById('kernel-mcp-line');
-          if (mcpLine) mcpLine.textContent = 'claude mcp add --transport http --scope local system ' + location.origin + '/_mcp';
+          // The blank screen teaches addresses of THIS system, so the origin is filled where it is read.
+          document.querySelectorAll('.kernel-origin').forEach((el) => { el.textContent = location.origin; });
         `)))
     );
   }
@@ -1171,7 +1173,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
     title: "em branco",
     root: "blank",
     elements: {
-      blank: { type: "Blank", props: { title: "Em branco.", hint: "Esta tela n\u00E3o recebe ordens: tudo entra pelo MCP." } },
+      blank: { type: "Blank", props: { title: "Em branco.", hint: "Diga o que um endere\u00E7o \u00E9, e ele passa a existir: na barra do navegador," } },
     },
   };
 
