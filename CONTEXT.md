@@ -77,6 +77,7 @@ POST /qualquer-coisa {data:{…}}                      404 — `declare: POST /q
 - O 404 é a decisão nova: antes, rota desconhecida caía no agente, e um clique perdido virava uma chamada de modelo. Program que quebra também NÃO cai no agente — ele é rebaixado e o 404 diz qual foi o erro, porque quem clicou não pediu nada novo.
 - `tests/apps/stem/meta.spec.ts` cobra a invariante pelo texto: se `_meta` aparecer no `Kernel.js`, no `Kernel.css` ou na Shell, o teste cai. Sem ele, o próprio agente que desenha telas escreve um dia um botão com `?_meta=` no href e ninguém vê. Ele roda em BUN (`just stem::test`) e fica fora do `just test`: o `--experimental-strip-types` recusa `namespace`, e é disso que o `main.ts` é feito.
 - O tool `feedback` do MCP morreu dentro do `meta`; o `intent` sobrevive só pelas fases (`interactive` + `gate`), e o `/_intent` e o `/_feedback` continuam como rotas INTERNAS — é por elas que o `declare()` desenha e edita.
+- O corpo pode vir direto (`{"name": …}`) ou em envelope (`{"data": {…}}`): `Server.envelope` põe o direto em `data` antes de tudo, porque o program promovido lê `$data.<field>` — sem isso o agente entenderia o pedido e o program rodaria com `$data` vazio.
 - O corpo que o agente lê chama `_meta`, não mais `instructions`: uma palavra só do CLI ao prompt.
 
 ## A tela não recebe ordens: o MCP é a única porta
@@ -87,7 +88,7 @@ onde as duas divergem; o que sobra na tela é leitura — a dobra, a régua, o r
 
 Os toques que sobram (`g h`, `g d`, `o`, `a`) ficam listados no `?`, um `<dialog>` que a Shell põe em TODA página, e é a tela em branco que ensina esse `?`. A lista mora em `View.KEYS`, e o `meta.spec.ts` recusa uma tecla que o kernel escute e a lista não tenha. Nenhum toque muda o sistema.
 
-- A tela em branco ENSINA primeiro as duas declarações por HTTP — `GET <origem>/?_meta=…` para uma tela, digitada na barra do navegador, e `POST <origem>/api/todo {"_meta": …, "data": {…}}` para uma API, com a nota de que o mesmo POST sem `_meta` responde depois — e o MCP (`claude mcp add … <origem>/_mcp`) depois, como segunda porta; o `<origem>` se preenche no cliente com o `location.origin`. Até 23/09 ela ensinava só o MCP. O dono inverteu a ordem porque a barra de endereço é a porta que ele usa primeiro. É TEXTO, e o `meta.spec.ts` recusa qualquer href, action, src ou fetch com `_meta` na Shell.
+- A tela em branco ENSINA primeiro as duas declarações por HTTP — `GET <origem>/?_meta=…` para uma tela, digitada na barra do navegador, e `POST <origem>/api/todo?_meta=… {"name": …}` para uma API, com o corpo DIRETO, com a nota de que o mesmo POST sem `_meta` responde depois — e o MCP (`claude mcp add … <origem>/_mcp`) depois, como segunda porta; o `<origem>` se preenche no cliente com o `location.origin`. Até 23/09 ela ensinava só o MCP. O dono inverteu a ordem porque a barra de endereço é a porta que ele usa primeiro. É TEXTO, e o `meta.spec.ts` recusa qualquer href, action, src ou fetch com `_meta` na Shell.
 - A dobra que espera vira instrução, não campo: `gate {path, continue | revise}` pelo MCP.
 - O SSE, o `develop()` e o `paintDraft()` ficam inteiros: é por eles que o agente desenha ao vivo.
 

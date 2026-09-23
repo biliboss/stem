@@ -798,9 +798,9 @@ export namespace View {
           h("div", { class: "kernel-blank-group" },
               h("p", { class: "kernel-blank-label" }, "Uma API, por HTTP:"),
               h("pre", { class: "kernel-address" }, h("code", null,
-                  h("b", { class: "kernel-verb" }, "POST"), " ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/api/todo\n",
-                  "{\n  \"_meta\": \"", h("span", { class: "kernel-slot" }, "cria uma tarefa"), "\",\n",
-                  "  \"data\": {\n    \"name\": \"Comprar p\u00E3o\",\n    \"description\": \"na padaria\"\n  }\n}")),
+                  h("b", { class: "kernel-verb" }, "POST"), " ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/api/todo?_meta=",
+                  h("span", { class: "kernel-slot" }, "cria uma tarefa"), "\n\n",
+                  "{ \"name\": \"Comprar p\u00E3o\", \"description\": \"na padaria\" }")),
               h("p", { class: "kernel-blank-note" }, "A rota nasce da declara\u00E7\u00E3o: o agente escreve o backend, e o mesmo POST, sem ",
                   h("code", null, "_meta"), ", passa a responder sozinho.")),
           h("div", { class: "kernel-blank-group kernel-blank-aside" },
@@ -3009,7 +3009,7 @@ export namespace Server {
       const url = new URL(c.req.url);
       const match = { method: c.req.method, path: url.pathname };
       const html = match.method === "GET" && (c.req.header("accept") ?? "").includes("text/html");
-      const body = html ? null : await readBody(c.req.raw);
+      const body = html ? null : Server.envelope(await readBody(c.req.raw));
       // `_meta` is a declaration of what this address means, and it is the ONLY thing that changes the system.
       // Empty reads the declaration back instead of writing one.
       const declared = url.searchParams.get("_meta") ?? (typeof (body as { _meta?: unknown })?._meta === "string" ? (body as { _meta: string })._meta : null);
@@ -3265,6 +3265,17 @@ export namespace Server {
   function send(status: number, body: unknown, contentType = "application/json", headers: Record<string, string> = {}) {
     const raw = typeof body === "string" && !contentType.includes("json");
     return new Response(raw ? body : JSON.stringify(Memory.jsonSafe(body)), { status, headers: { ...headers, "content-type": contentType } });
+  }
+
+  /**
+   * A caller may send the record itself — `{"name": …}` — instead of `{"data": {"name": …}}`: the agent would
+   * understand either, but a promoted program reads `$data.<field>`, so the kernel wraps it here, once, and both
+   * shapes answer the same. `_meta` stays beside `data`, never inside it.
+   */
+  export function envelope(body: unknown): unknown {
+    if (!body || typeof body !== "object" || Array.isArray(body) || "data" in body) return body;
+    const { _meta, ...data } = body as Record<string, unknown>;
+    return _meta === undefined ? { data } : { data, _meta };
   }
 
   async function readBody(req: Request): Promise<any> {
