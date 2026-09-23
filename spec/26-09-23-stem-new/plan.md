@@ -41,9 +41,9 @@ kickstart merges; 4 and 5 cannot.
    proof: GET / → 302 /_stem; the what field carries the --meta text
 
 5  published
-   5.1  just stem::export; public package.json: name @biliboss/stem,
+   5.1  subtree split of stem-new; public package.json: name @biliboss/stem,
         bin stem, private removed
-   5.2  npm login + npm publish — the owner's gesture
+   5.2  git push to biliboss/stem main (fast-forward); no npm (24/09, the owner)
    5.3  the one-take run in validation.md
    5.4  roadmap: item 1 moves to Done with the proof; #18 closed as merged
    proof: validation.md, every line checked

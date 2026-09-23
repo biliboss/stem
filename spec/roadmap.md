@@ -30,7 +30,8 @@ docs                              bili-docs /stem/: landing, 8 concepts, guides,
 
 **stem new** (roadmap item 1 below, branch `stem-new`,
 `spec/26-09-23-stem-new/`). Groups 1–4 are built; group 5 — export, publish,
-the one-take run — waits on `npm login`, the owner's gesture.
+the one-take run — installs from our repo (`bunx github:biliboss/stem`),
+no npm login (24/09).
 
 ## Next, in order
 

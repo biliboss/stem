@@ -13,7 +13,7 @@ only proof that catches a path into this repo leaking into the package.
 ```
 export HOME=$(mktemp -d)                  no ~/.claude/skills, no ~/.stem
 cd $(mktemp -d)
-bunx @biliboss/stem new todo --meta "a list of what I have to buy"
+bunx github:biliboss/stem new todo --meta "a list of what I have to buy"
 ```
 
 - [ ] exactly three questions asked (app name came as the positional, so
