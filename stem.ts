@@ -798,11 +798,9 @@ export namespace View {
           h("div", { class: "kernel-blank-group" },
               h("p", { class: "kernel-blank-label" }, "Uma API, por HTTP:"),
               h("pre", { class: "kernel-address" }, h("code", null,
-                  h("b", { class: "kernel-verb" }, "POST"), " ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/api/todo?_meta=",
-                  h("span", { class: "kernel-slot" }, "cria uma tarefa"), "\n\n",
-                  "{ \"name\": \"Comprar p\u00E3o\", \"description\": \"na padaria\" }")),
-              h("p", { class: "kernel-blank-note" }, "A rota nasce da declara\u00E7\u00E3o: o agente escreve o backend, e o mesmo POST, sem ",
-                  h("code", null, "_meta"), ", passa a responder sozinho.")),
+                  h("b", { class: "kernel-verb" }, "POST"), " ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/api/todo\n",
+                  h("span", { class: "kernel-slot" }, "{ \"name\": \"Comprar p\u00E3o\", \"description\": \"na padaria\" }"))),
+              h("p", { class: "kernel-blank-note" }, "Tudo em /api/* \u00E9 interpretado: na primeira chamada o caminho e os campos dizem o que o endere\u00E7o \u00E9, e o agente escreve o backend. As seguintes rodam o programa.")),
           h("div", { class: "kernel-blank-group kernel-blank-aside" },
               h("p", { class: "kernel-blank-label" }, "Ou deixe um agente fazer, pela porta do MCP:"),
               h("pre", { class: "kernel-mcp" }, h("code", null, "claude mcp add --transport http --scope local system ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/_mcp"))),
@@ -3230,9 +3228,16 @@ export namespace Server {
           return { ...staticBody(learning.behavior), by: `${learning.id}${promoted ? " (promoted)" : ""}` };
         }
 
-        return { status: 404, by: broke ? "demoted" : "unknown", body: {
+        // Nothing compiled answers. Under /api/* the agent interprets — an API address never says 404: a new one
+        // declares itself from its method, path and fields, and that sentence is kept as its teaching. An address
+        // declared with _meta anywhere answers with what it was taught. A program that broke is interpreted
+        // again, and the agent may write the one that replaces it. Outside /api/* and never declared: 404.
+        const implied = Server.implied(match, body, (await memory.teachings(match)).length > 0);
+        if (implied === null) return { status: 404, by: broke ? "demoted" : "unknown", body: {
           error: broke ? `${match.method} ${match.path} had a program and it broke: ${broke}` : `nothing knows ${match.method} ${match.path}`,
-          declare: `${match.method} ${match.path} with _meta=<what this address is>` } };
+          declare: `an API lives under /api/*, or declare this address with _meta=<what it is>` } };
+        if (implied) await memory.teach(`${match.method} ${match.path}`, broke ? `${implied} (o programa anterior quebrou: ${broke})` : implied);
+        declared = implied || null;
       }
 
       const interpreter = await agent;
@@ -3241,7 +3246,7 @@ export namespace Server {
       // What the system believes this request is, shown on every open page while the agent works on it.
       const size = Object.entries((body ?? {}) as Record<string, unknown>)
         .filter(([, v]) => Array.isArray(v)).map(([k, v]) => `${(v as unknown[]).length} ${k}`).join(" \u00B7 ");
-      const meaning = teachings.at(-1)?.split(/(?<=[.:])\s/)[0] ?? declared;
+      const meaning = teachings.at(-1)?.split(/(?<=[.:])\s/)[0] ?? declared ?? `${match.method} ${match.path}`;
       Pulse.emit("operation", { method: match.method, path: match.path, size, meaning: meaning.slice(0, 160) });
       const { transcript, ms, turns, tool_calls, cost_usd, answer } = await interpreter.resolve(
         { ...match, accept, query, body, teachings, screens: await memory.contracts() }, (sql) => memory.app(sql));
@@ -3265,6 +3270,20 @@ export namespace Server {
   function send(status: number, body: unknown, contentType = "application/json", headers: Record<string, string> = {}) {
     const raw = typeof body === "string" && !contentType.includes("json");
     return new Response(raw ? body : JSON.stringify(Memory.jsonSafe(body)), { status, headers: { ...headers, "content-type": contentType } });
+  }
+
+  /**
+   * What a request with no `_meta` declares by itself. `/api/*` is where an API lives, so the wildcard interprets
+   * anything there: the sentence the method, the path and the fields make, kept as the first teaching. `""` when
+   * the address was already declared, anywhere — the agent answers with what it was taught. `null` outside
+   * `/api/*` for an address nobody declared: a stray path does not wake the model.
+   */
+  export function implied(match: { method: string; path: string }, body: unknown, taught: boolean): string | null {
+    if (taught) return "";
+    if (!(match.path === "/api" || match.path.startsWith("/api/"))) return null;
+    const data = (body as { data?: unknown } | null)?.data;
+    const fields = data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data) : [];
+    return `${match.method} ${match.path}${fields.length ? ` com ${fields.join(", ")}` : ""}: o caminho${fields.length ? " e os campos dizem" : " diz"} o que este endere\u00E7o \u00E9`;
   }
 
   /**

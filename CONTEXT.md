@@ -59,22 +59,25 @@ qualquer coisa que ele pudesse julgar, e cada uma gastava um turno do agente.
 - A régua do estúdio se dimensiona sozinha (`grid-auto-flow: column`), então mudar o número de fases não deixa coluna vazia.
 - As fases não paradas continuam gravadas por `keep()`, senão o replay não teria em que se apoiar.
 
-## `_meta` é a única porta, e nenhum botão a chama
+## `/api/*` se interpreta sozinho, e `_meta` declara o resto
 
-**`_meta=<o que este endereço É>` na query ou no corpo de qualquer requisição é a ÚNICA coisa que muda o sistema;
-tudo o mais é determinístico, e endereço que ninguém declarou responde 404 em vez de improvisar.** `_meta` não é
-ordem, é declaração: ela fica como `teaching` do escopo, e a próxima chamada SEM `_meta` continua com o mesmo
-significado. É isso que "nasce pronto" quer dizer — você diz uma vez, o endereço existe.
+**Um pedido em `/api/*` nunca responde 404: o que nenhum programa responde, o agente interpreta, e na primeira
+chamada o método, o caminho e os campos SÃO a declaração, gravada como o `teaching` do escopo.** Fora de `/api/*`
+vale a regra antiga: `_meta=<o que este endereço É>`, na query ou no corpo, é o que muda o sistema, e endereço que
+ninguém declarou responde 404. `_meta` não é ordem, é declaração: a próxima chamada SEM `_meta` continua com o
+mesmo significado, e é o `Server.implied` quem faz isso valer antes do programa ser promovido.
 
 ```
+POST /api/todo {"name": "Comprar pão"}               1ª: se declara, o agente escreve backend e program
+POST /api/todo {"name": "Pagar a luz"}               program promovido, sem modelo — ou o agente, com o teaching
 GET  /para-medicos?_meta=landing page para médicos   sem view → design · com view → edit, e devolve a página
-POST /calendar {data:{…}, _meta:"agenda 30min…"}     agente responde E escreve o program
-POST /calendar {data:{…}}                            program promovido, sem modelo
 GET  /calendar?_meta=                                lê de volta: as declarações, a view e o program
-POST /qualquer-coisa {data:{…}}                      404 — `declare: POST /qualquer-coisa with _meta=…`
+POST /qualquer-coisa {"a": 1}                        404 — `an API lives under /api/*, or declare … with _meta`
 ```
 
-- O 404 é a decisão nova: antes, rota desconhecida caía no agente, e um clique perdido virava uma chamada de modelo. Program que quebra também NÃO cai no agente — ele é rebaixado e o 404 diz qual foi o erro, porque quem clicou não pediu nada novo.
+- Até 23/09 TODO endereço não declarado dava 404, `/api/*` incluso, para que um clique perdido nunca virasse chamada de modelo. O dono trocou isso pelo design mais enxuto: a API se declara pelo uso. O preço é real e foi escolhido — um bot ou um typo DENTRO de `/api/*` custa um turno do agente. Fora de `/api/*` a guarda continua.
+- Até 23/09 também era mentira que "a declaração fica": sem programa promovido, a segunda chamada sem `_meta` caía no 404, porque o ramo sem `_meta` só olhava capability, program e learning. Agora um escopo com teaching vai ao agente.
+- Um program que quebra em `/api/*` é interpretado de novo, com o erro anexado ao teaching; fora dele, é rebaixado e responde 404 com o erro.
 - `tests/apps/stem/meta.spec.ts` cobra a invariante pelo texto: se `_meta` aparecer no `Kernel.js`, no `Kernel.css` ou na Shell, o teste cai. Sem ele, o próprio agente que desenha telas escreve um dia um botão com `?_meta=` no href e ninguém vê. Ele roda em BUN (`just stem::test`) e fica fora do `just test`: o `--experimental-strip-types` recusa `namespace`, e é disso que o `main.ts` é feito.
 - O tool `feedback` do MCP morreu dentro do `meta`; o `intent` sobrevive só pelas fases (`interactive` + `gate`), e o `/_intent` e o `/_feedback` continuam como rotas INTERNAS — é por elas que o `declare()` desenha e edita.
 - O corpo pode vir direto (`{"name": …}`) ou em envelope (`{"data": {…}}`): `Server.envelope` põe o direto em `data` antes de tudo, porque o program promovido lê `$data.<field>` — sem isso o agente entenderia o pedido e o program rodaria com `$data` vazio.
@@ -122,7 +125,7 @@ está em `tests/apps/stem/routes.spec.ts`.
 com _meta      o agente: é a única coisa que ele não podia ter compilado antes
 GET text/html  view guardada → render com a query (3 ms) · sistema vazio → bootstrap
 rota do app    o handler TypeScript do `routes`, antes da memória ver o pedido
-outra rota     capability estática → program promovido (20 ms) → learning → 404
+outra rota     capability estática → program promovido (20 ms) → learning → /api/* ou declarada: o agente · senão 404
 ```
 
 - Um `program` é a SurrealQL que o agente devolve junto da resposta; a mesma SQL duas vezes para a mesma rota promove, e SQL que quebra rebaixa. Duas escritas iguais provam consistência, não correção.
