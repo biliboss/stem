@@ -3424,6 +3424,8 @@ export namespace Server {
     /** `false` keeps the slug (the cache key, the name) but serves on a plain localhost port, with no Caddy. */
     publish?: boolean;
     open: boolean;
+    /** The path the browser opens on, "/" when absent: `new` lands on the kickstart with question 3 already said. */
+    landing?: string;
   };
 
   /**
@@ -3567,7 +3569,7 @@ export namespace Server {
       const leave = () => { void Caddy.unpublish(slug).finally(() => process.exit(0)); };
       process.on("SIGINT", leave).on("SIGTERM", leave);
     }
-    if (o.open) process.getBuiltinModule("node:child_process").execFile("open", [url]);
+    if (o.open) process.getBuiltinModule("node:child_process").execFile("open", [new URL(o.landing ?? "/", url).href]);
   }
 
   /**
@@ -4301,7 +4303,13 @@ claude mcp add --transport http --scope local ${a.slug} ${origin(a)}/_mcp
       Acp.Account.resolve(a.account);
       process.chdir(dir);
       return Server.serve({ app: `${dir}/app.ts`, db: Memory.address({ fresh: true, cwd: dir }),
-        port: a.caddy ? 0 : 3000, agent: "claude-agent-acp", tools: "mcp", slug: a.slug, publish: a.caddy, open: given.open });
+        port: a.caddy ? 0 : 3000, agent: "claude-agent-acp", tools: "mcp", slug: a.slug, publish: a.caddy, open: given.open,
+        landing: landing(a) });
+    }
+
+    /** /_stem, not /: step 1 reads `words` from the URL, so the what field opens filled with question 3. */
+    export function landing(a: Answers) {
+      return `/_stem?${new URLSearchParams({ words: a.meta })}`;
     }
   }
 }

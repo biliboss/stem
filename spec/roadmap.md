@@ -20,22 +20,17 @@ preferences carry over (H1)       14/14 against 1–2/14 without — ceiling cav
 bare body                         {"name": …} works like {"data": {…}} (ff39661)
 RocksDB for new apps              existing .skv kept on surrealkv (23/09, 1bd86eb)
 ? shortcuts on every page         View.KEYS, and a test that no key goes unlisted
+the kickstart (#22)               GET / on an empty app → 302 /_stem; one live run
+                                  to a real /todos, $2.65 (23/09, 8dfa3f8;
+                                  spec/26-09-23-stem-kickstart/)
 docs                              bili-docs /stem/: landing, 8 concepts, guides, reference
 ```
 
 ## Now
 
-**The kickstart** (issue #22, worktree `stem-kickstart`). `/` of an empty app
-redirects to `/_stem`: what → why → plan → three layouts → the screen, then the
-overview with how to grow the app. Prototype approved in `design/kickstart.html`.
-
-```
-w1  prototype review + the after state          done  848d208
-w2  /_stem in the kernel                        in progress
-w3  quickstart with the six screens             done  b62c572
-    proof: GET / on an empty app → 302 /_stem; step 5 creates the view
-           (x-resolved-by: view); just stem::test green with a kickstart test
-```
+**stem new** (roadmap item 1 below, branch `stem-new`,
+`spec/26-09-23-stem-new/`). Groups 1–4 are built; group 5 — export, publish,
+the one-take run — waits on `npm login`, the owner's gesture.
 
 ## Next, in order
 
