@@ -1,4 +1,7 @@
-# apps/stem — a porta, e a casca que ela devolve no milissegundo 0
+---
+title: A porta, medida
+description: "apps/stem — a porta, e a casca que ela devolve no milissegundo 0"
+---
 
 **`GET /?_meta=<o que este endereço É>` tem de responder AGORA, com a casca do
 que vai existir, e não em sete minutos com a tela pronta.** Medido em 22/09 num

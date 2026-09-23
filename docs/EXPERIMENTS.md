@@ -1,4 +1,7 @@
-# apps/stem — experimentos
+---
+title: Experimentos
+description: "apps/stem — experimentos"
+---
 
 **Cada hipótese tem uma pergunta, uma medida que decide e um script que qualquer agente
 reroda.** O resultado bruto mora em `experiments/results/`, uma linha JSON por execução; esta

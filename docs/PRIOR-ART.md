@@ -1,4 +1,7 @@
-# Prior art: backend with no routes that learns
+---
+title: Estado da arte
+description: "Prior art: backend with no routes that learns"
+---
 
 Checked on 2026-09-14 with WebSearch and WebFetch. Our idea has four key traits.
 (A) Any route reaches a runtime. (B) An LLM resolves the request. (C) State is persisted in a real DB.

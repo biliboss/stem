@@ -61,7 +61,7 @@ reloads its MCP config.
 2. **Teach a route before anyone calls it.** `teach` with scope `"POST /zap/messages"` and what it means: the body,
    the table it writes, the answer. Every open page shows the first sentence of that teaching while it runs.
 3. **Data from outside enters as an operation**, never as `INSERT` through `query`. POST to the route like a client;
-   the body goes under `data` (`{"data": {...}}`), because a crystallized program reads `$data`. The same shape
+   the body may be the record itself (`{"name": …}`) or under `data`; the kernel wraps a bare body in `data`, because a crystallized program reads `$data`. The same shape
    twice promotes a program.
 4. **Files go through `media`, rows keep the path.** `media {name, url | data}` — `url` may be `http(s)://`, `file://`
    or an absolute path on the machine — stores the file beside the database and answers `/_media/<name>`. Put that

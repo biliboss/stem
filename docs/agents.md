@@ -1,4 +1,7 @@
-# Os dois agentes do Stem, e por que o pi não entra por ACP
+---
+title: Os dois agentes
+description: "Os dois agentes do Stem, e por que o pi não entra por ACP"
+---
 
 **O Stem tem dois agentes com papéis que não se misturam: o construtor, que escreve o app, e o agente-produto, que
 vive dentro dele.** A pergunta "embutir o pi.dev por ACP para o cliente criar agente com skills" juntava os dois, e

@@ -1,4 +1,7 @@
-# O mundo do Stem: primitivas, eventos e o laboratório
+---
+title: O mundo
+description: "O mundo do Stem: primitivas, eventos e o laboratório"
+---
 
 **O Stem primeiro constrói um mundo onde os agentes e o dono vivem e interagem, e só depois pluga esse mundo no
 real.** O que se testa no laboratório entra no sistema exatamente como entraria de fora, então comutar para o

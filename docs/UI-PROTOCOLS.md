@@ -1,4 +1,7 @@
-# UI-PROTOCOLS — generative UI, e o que copiar para o nosso DSL
+---
+title: Protocolos de UI
+description: "UI-PROTOCOLS — generative UI, e o que copiar para o nosso DSL"
+---
 
 Levantado em 14/09/2026 por WebFetch nas páginas oficiais. Onde a sintaxe exata
 não apareceu na página lida, o trecho está marcado **(inferido)**.
