@@ -7,7 +7,7 @@
 //   bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>|--no-agent] [--tools json|mcp]
 //   bun stem.ts check <app>.ts — the rules the app claims, verified; exits 1 when one is broken
 //   bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
-//   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp
+//   GET /_system · POST /_teach · /_events · POST /_gate · /_draft · /_ds · /_design · /_mcp · /_stem (the kickstart)
 //   POST /_intent · /_feedback · /_accept · /_judge · GET text/html → a view · anything else → an operation
 //   _meta=<what this address IS> on any request, in the query or the body: the only thing that changes the system.
 //   `_meta=` empty reads the declaration back. No button ever sends it — the screen is deterministic.
@@ -1236,6 +1236,12 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
       { seq: ["o"], what: "contornar os componentes, com o nome de cada um" },
       { seq: ["a"], what: "o agente: resumo ou o log de ferramentas" },
     ] },
+    { group: "Kickstart", keys: [
+      { seq: ["1"], what: "escolher a primeira op\u00E7\u00E3o" },
+      { seq: ["2"], what: "escolher a segunda" },
+      { seq: ["3"], what: "escolher a terceira" },
+      { seq: ["Enter"], what: "continuar" },
+    ] },
     { group: "Ajuda", keys: [
       { seq: ["?"], what: "esta lista" },
     ] },
@@ -1780,6 +1786,9 @@ export class Memory {
   /** How many matching operations a learning needs before it becomes a capability. */
   static PROMOTE_AT = 2;
 
+  /** The kernel's own tables: defined at open, and out of reach of the agent's queries. Every other table is the app's. */
+  static KERNEL = ["operation", "execution", "learning", "capability", "teaching", "view", "theme", "preference", "acceptance", "program", "design_phase", "kickstart"];
+
   static async open(url: string) {
     // import(), not a static import: Storybook loads this file in a browser, where the native engine cannot exist.
     const { createNodeEngines } = await import("@surrealdb/node");
@@ -1792,7 +1801,7 @@ export class Memory {
     await db.connect(url);
     await db.use({ namespace: "backend", database: "backend" });
     // A SELECT on a table that does not exist yet is an ERROR, not an empty list (surrealkv and rocksdb alike).
-    await db.query(["operation", "execution", "learning", "capability", "teaching", "view", "theme", "preference", "acceptance", "program", "design_phase"].map((t) => `DEFINE TABLE IF NOT EXISTS ${t} SCHEMALESS;`).join(" "));
+    await db.query(Memory.KERNEL.map((t) => `DEFINE TABLE IF NOT EXISTS ${t} SCHEMALESS;`).join(" "));
     return new Memory(db);
   }
 
@@ -1842,7 +1851,7 @@ export class Memory {
 
   /** The agent's query into application state; the operational tables stay out of reach. */
   async app(sql: string, vars: Record<string, unknown> = {}) {
-    if (/\b(operation|execution|learning|capability|teaching|view|theme|preference|acceptance|program|design_phase)\b/i.test(sql)) {
+    if (new RegExp(`\\b(${Memory.KERNEL.join("|")})\\b`, "i").test(sql)) {
       throw new Error("operational tables are reserved");
     }
     return Memory.jsonSafe(await this.#db.query(sql, vars));
@@ -2006,6 +2015,55 @@ export class Memory {
   async saveTokens(tokens: Record<string, string>, origin: unknown) {
     await this.define("CREATE theme CONTENT $t", { t: { tokens, origin, created_at: new Date() } });
     Pulse.emit("changed", { path: "*" });
+  }
+
+  /** A kickstart answer kept by the key of its inputs: a reload reads it back instead of asking the agent again. */
+  async kickstart(key: string) {
+    const [rows] = await this.query<[{ answer: unknown; cost_usd?: number; ms?: number }[]]>(
+      "SELECT answer, cost_usd, ms, created_at FROM kickstart WHERE key = $key ORDER BY created_at DESC LIMIT 1", { key });
+    return rows[0];
+  }
+
+  async keepKickstart(key: string, step: string, answer: unknown, m: { ms: number; cost_usd: number }) {
+    await this.define("CREATE kickstart CONTENT $k", { k: { key, step, answer, ms: m.ms, cost_usd: m.cost_usd, created_at: new Date() } });
+  }
+
+  /** What `/_stem` shows once the system is not empty: its screens, its API, and what the model cost to get here. */
+  async overview(): Promise<Kickstart.Overview> {
+    const [views, programs, teachings, executions, kickstarts, info] = await this.query<[
+      { path: string; title?: string; origin?: { kind?: string; ms?: number; cost_usd?: number } }[],
+      { method: string; route: string; promoted?: boolean; origin?: string; runs: number }[],
+      { scope: string; instruction: string }[], { cost_usd?: number }[], { cost_usd?: number }[], { tables?: Record<string, unknown> }]>(
+      `SELECT path, spec.title AS title, origin, created_at FROM view ORDER BY created_at;
+       SELECT method, route, promoted, origin, array::len(runs ?? []) AS runs, created_at FROM program ORDER BY created_at;
+       SELECT scope, instruction, created_at FROM teaching ORDER BY created_at;
+       SELECT cost_usd FROM execution; SELECT cost_usd FROM kickstart; INFO FOR DB;`);
+    const screens = new Map<string, Kickstart.Overview["screens"][number]>();
+    for (const v of views) {
+      const seen = screens.get(v.path);
+      const designed = ["intent", "first_visit"].includes(String(v.origin?.kind)) ? v.origin : undefined;
+      screens.set(v.path, { path: v.path, title: v.title ?? seen?.title ?? v.path, versions: (seen?.versions ?? 0) + 1,
+        ms: seen?.ms ?? designed?.ms, cost_usd: seen?.cost_usd ?? designed?.cost_usd });
+    }
+    const api = new Map<string, Kickstart.Overview["api"][number]>();
+    for (const p of programs) api.set(`${p.method} ${p.route}`, { method: p.method, route: p.route, kind: p.promoted ? "program" : "candidate",
+      runs: p.runs, note: p.origin === "design" ? "written with the screen" : "" });
+    // A declared address with no program yet is still part of the API: it answers, through the agent.
+    const scopes = new Map(teachings.map((t) => [t.scope, t.instruction]));
+    for (const [scope, instruction] of scopes) {
+      // A scope can arrive URL-encoded ("/api/todos/%7Bid%7D"): read it as the route the program is keyed by.
+      const [method, raw] = scope.split(" ");
+      const path = (() => { try { return decodeURI(raw ?? ""); } catch { return raw ?? ""; } })();
+      if (!path.startsWith("/") || screens.has(path) || api.has(`${method} ${path}`)) continue;
+      api.set(`${method} ${path}`, { method, route: path, kind: "taught", runs: 0, note: instruction.slice(0, 90) });
+    }
+    const spent = (rows: { cost_usd?: number }[]) => rows.reduce((a, r) => a + (Number(r.cost_usd) || 0), 0);
+    const designed = [...screens.values()];
+    return { screens: designed, api: [...api.values()], counts: {
+      programs: programs.length, teachings: scopes.size,
+      tables: Object.keys(info?.tables ?? {}).filter((t) => !Memory.KERNEL.includes(t)),
+      runs: executions.length + kickstarts.length + views.filter((v) => ["intent", "feedback", "first_visit"].includes(String(v.origin?.kind))).length,
+      cost_usd: spent(executions) + spent(kickstarts) + spent(designed) } };
   }
 
   /** A system that was never told anything: no view, no teaching. */
@@ -2513,6 +2571,12 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
       transcript: string[]; ms: number; answer: { a: boolean[]; b: boolean[]; notes: string } }>;
   }
 
+  /** One kickstart answer — the reasons, the plan or the layouts — from a fresh session that replies only JSON. */
+  kickstart(prompt: string, task: object) {
+    return this.run(`${prompt}\n\nTASK ${JSON.stringify(task)}`, async () => ({ error: "no queries" }), true) as Promise<{
+      transcript: string[]; ms: number; cost_usd: number; answer: Record<string, unknown> }>;
+  }
+
   /**
    * One exchange with the agent. Operations share the long-lived session; design, compile and judge
    * each open a FRESH one, so nothing crosses between tasks except what the database hands over.
@@ -2621,13 +2685,14 @@ Reply with ONLY: {"a": [bool per preference, same order], "b": [bool per prefere
             `"views": [{"path": "/x/{id}", "view": <view>}] for the route templates its links point to (empty if none)}.\nVIEW ${JSON.stringify(view)}`, execute);
           const answer = { view, programs: wiring.answer.programs, views: wiring.answer.views } as Record<string, unknown>;
           const problem = check ? await check(answer) : undefined;
-          if (!problem) return { ...wiring, answer, ms: Date.now() - started };
+          if (!problem) return { ...wiring, answer, ms: Date.now() - started, cost_usd: this.cost.get(session) ?? 0 };
           const fixed = await this.turns(session, `${problem}\nReply with the whole final JSON (view, programs, views).`, execute, check);
-          return { ...fixed, ms: Date.now() - started };
+          return { ...fixed, ms: Date.now() - started, cost_usd: this.cost.get(session) ?? 0 };
         }
         Pulse.emit("phase", { path: phasedPath, name: "desenhando a tela", step: 5, total: 5 });
         const last = await this.turns(session, `PHASE ${Interpreter.TOTAL} of ${Interpreter.TOTAL} — the screen. Now reply with the final JSON exactly as the instructions specify (view, programs, views).`, execute, check);
-        return { ...last, ms: Date.now() - started };
+        // A design always runs in a fresh session, so the session's running total IS what the whole design cost.
+        return { ...last, ms: Date.now() - started, cost_usd: this.cost.get(session) ?? 0 };
       }
       finally { if (fresh) await this.#conn.closeSession({ sessionId: session }).catch(() => undefined); }
     };
@@ -2782,6 +2847,570 @@ export namespace Rules {
 }
 
 /** Every method on every path lands here, in the order a request would hit them. */
+/**
+ * The kickstart: what `/_stem` shows. An EMPTY system gets a guided screen instead of a blank one — what it should do,
+ * why, a plan to read, three layouts to pick from, and the build — and a system that is not empty gets its overview and
+ * the place to grow it. Every state is a URL and every answer travels in its query string, so a reload never re-asks;
+ * every agent answer is kept in the `kickstart` table by the key of its inputs, so a reload never re-pays either.
+ * The build is ONE declaration handed to the same `declare()` a `GET <screen>?_meta=` takes, server-side: nothing this
+ * namespace sends to the browser carries `_meta`, and there is no second door into the design.
+ */
+export namespace Kickstart {
+  const { h, escape } = Html;
+
+  export type Step = "why" | "plan" | "layouts";
+  /** Everything the owner said so far, as the URL carries it. */
+  export type Input = { kind: string; words: string; why: string; note: string; round: number };
+  /** Which state is on screen, for whom: 1–5 are the kickstart, 6 is the overview. */
+  export type Frame = { app: string; step: number; input: Input; empty: boolean };
+  export type Reason = { title: string; blurb: string };
+  export type Plan = { why: string; how: string; how_detail: string; entity: string; noun: string; fields: string[];
+    screen: string; endpoint: string; what_detail: string };
+  export type Layout = { title: string; blurb: string; spec?: View.Spec; sample: View.Data };
+  /** An agent answer as a page reads it: what it said, what it cost the one time it was asked, and whether this was that time. */
+  export type Drawn<T> = { answer: T; cost_usd: number; cached: boolean };
+  export type Overview = {
+    screens: { path: string; title: string; versions: number; ms?: number; cost_usd?: number }[];
+    api: { method: string; route: string; kind: "program" | "candidate" | "taught"; runs: number; note: string }[];
+    counts: { programs: number; teachings: number; tables: string[]; runs: number; cost_usd: number };
+  };
+
+  export const KINDS: Record<string, { title: string; blurb: string; glyph: string }> = {
+    interface: { title: "Build an interface", blurb: "A screen people open and use: a list, a form, a dashboard.",
+      glyph: `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13h8M8 16h5"/>` },
+    process: { title: "Automate a process", blurb: "Something that runs on its own when something happens.",
+      glyph: `<path d="M4 12h5l2-5 3 10 2-5h4"/>` },
+    model: { title: "Model my business", blurb: "The things your work keeps track of: customers, orders, tasks.",
+      glyph: `<circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="12" cy="17" r="3"/><path d="M9.5 8.5l1.5 6M14.5 8.5l-1.5 6"/>` },
+  };
+
+  /** Answers being drawn right now, by key: a reload during a call joins it instead of paying for a second one. */
+  export const inflight = new Map<string, Promise<Drawn<unknown>>>();
+
+  const clean = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
+  const slug = (v: unknown) => clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const sentence = (s: string) => (!s || /[.!?]$/.test(s) ? s : `${s}.`);
+
+  /** The URL's answers, normalized: a typed reason wins over a picked one, and an unknown kind is no kind. */
+  export function input(q: Record<string, unknown>): Input {
+    const kind = clean(q.kind);
+    return { kind: kind in KINDS ? kind : "", words: clean(q.words), why: clean(q.own) || clean(q.why), note: clean(q.note),
+      round: Math.max(0, Math.floor(Number(q.round) || 0)) };
+  }
+
+  /**
+   * What an answer depends on, and nothing else: the step in the URL, the pick and the host never change a key. What the
+   * system already has is NOT in it either — step 5 reads the plan back after the build added a screen, and a key that
+   * moved with the system would lose the plan it is building.
+   */
+  export function key(step: Step, i: Input): string {
+    const asked = step === "why" ? [i.kind, i.words] : step === "plan" ? [i.kind, i.words, i.why, i.note] : [i.kind, i.words, i.why, i.note, i.round];
+    return JSON.stringify([step, ...asked]);
+  }
+
+  /** `/_stem?step=\u2026` with every answer given so far; empty ones stay out of the URL. */
+  export function href(i: Input, more: Record<string, string | number> = {}): string {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...more, kind: i.kind, words: i.words, why: i.why, note: i.note, round: i.round || "" })) {
+      if (v !== "" && v != null) q.set(k, String(v));
+    }
+    return `/_stem?${q}`;
+  }
+
+  /** What the agent reads besides its prompt: the answers so far, in words. */
+  export function task(i: Input) {
+    return { kind: KINDS[i.kind]?.title ?? "(not chosen)", words: i.words, ...(i.why ? { why: i.why } : {}),
+      ...(i.note ? { note: i.note } : {}), ...(i.round ? { round: i.round } : {}) };
+  }
+
+  /** An agent answer made safe to render and to build from; one that says nothing usable throws, and is never kept. */
+  export function accept(step: Step, raw: Record<string, any>): unknown {
+    if (step === "plan") return plan(raw);
+    const list = (v: unknown) => (Array.isArray(v) ? v : []).filter((x) => clean(x?.title)).slice(0, 3);
+    if (step === "why") {
+      const reasons = list(raw.reasons).map((r) => ({ title: clean(r.title), blurb: clean(r.blurb) }));
+      if (!reasons.length) throw new Error("the agent gave no reasons");
+      return reasons;
+    }
+    const options = list(raw.options).map((o) => ({ title: clean(o.title), blurb: clean(o.blurb),
+      spec: o.spec && typeof o.spec === "object" ? o.spec : undefined, sample: o.sample && typeof o.sample === "object" ? o.sample : {} }));
+    if (!options.length) throw new Error("the agent gave no layouts");
+    return options;
+  }
+
+  /** A plan whose screen would shadow the kernel or the API is re-pathed from its noun: the build must land on a screen. */
+  export function plan(raw: Record<string, any>): Plan {
+    if (!clean(raw.why) && !clean(raw.how)) throw new Error("the agent gave no plan");
+    const entity = slug(raw.entity).replace(/-/g, "_") || "item";
+    const noun = clean(raw.noun) || `${entity}s`;
+    const segment = [slug(String(raw.screen ?? "").split("/").filter(Boolean)[0]), slug(noun), "items"].find((s) => s && s !== "api") as string;
+    const endpoint = /^\/api\/[a-z0-9-]+$/.test(String(raw.endpoint)) ? String(raw.endpoint) : `/api/${segment}`;
+    return { why: clean(raw.why), how: clean(raw.how), how_detail: clean(raw.how_detail), entity, noun,
+      fields: (Array.isArray(raw.fields) ? raw.fields : []).map(clean).filter(Boolean), screen: `/${segment}`, endpoint,
+      what_detail: clean(raw.what_detail) };
+  }
+
+  /** The ONE declaration the build hands to declare(): what the owner said, the plan he read, and the layout he picked. */
+  export function declaration(i: Input, p: Plan, l: Layout | undefined): string {
+    const kind = KINDS[i.kind]?.title;
+    return [
+      sentence(`${i.words}${kind ? ` (${kind.toLowerCase()})` : ""}`),
+      i.why && `Why: ${sentence(i.why)}`,
+      `WHY: ${sentence(p.why)}`,
+      `HOW: ${sentence(p.how)}${p.how_detail ? ` ${sentence(p.how_detail)}` : ""}`,
+      `WHAT: a ${p.entity} with ${p.fields.join(", ") || "the fields it needs"}. This screen is GET ${p.screen}; its actions write through ${p.endpoint} (POST ${p.endpoint} adds a ${p.entity}).${p.what_detail ? ` ${sentence(p.what_detail)}` : ""}`,
+      l && `LAYOUT the owner picked: "${l.title}"${l.blurb ? ` — ${sentence(l.blurb)}` : "."}`,
+      l?.spec && `Start from this view, drawn over sample rows; keep its structure and write real "data" queries on the ${p.entity} table: ${JSON.stringify(l.spec)}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  /** One prompt per step, each answered by a fresh session as JSON only, and read by someone who has not decided yet. */
+  export const PROMPT: Record<Step, string> = {
+    why: `You help an owner start a software system from nothing. TASK says WHAT they want: a kind and their own words.
+Offer three different reasons WHY they could want it. Each reason is a different outcome, and it would change what the
+first screen puts first. Write in the language of their words, in their voice ("I forget things I promised"), concrete,
+never technical, never about software. "known" lists what the system already has: a reason builds on it, never repeats it.
+Reply with ONLY: {"reasons": [{"title": "<at most 7 words>", "blurb": "<one sentence, at most 14 words: what is different once it exists>"}, <three in all>]}`,
+    plan: `You plan the FIRST slice of a system that does not exist yet, from what the owner wants and why (TASK). One entity,
+one screen, one endpoint: the smallest thing that makes the "why" true. Write for the owner, in the language of their
+words: plain sentences, no jargon, no "we will". "note", when present, is what the owner asked to change in your last plan.
+"known" lists the screens and endpoints that already exist: never reuse their paths.
+Reply with ONLY one JSON object:
+{"why": "<one sentence: what is different for the owner>", "how": "<one sentence: how the screen behaves>",
+ "how_detail": "<one sentence: the one interaction that matters most>", "entity": "<singular english identifier, e.g. task>",
+ "noun": "<the plural as the owner would say it, e.g. tasks>", "fields": ["<a field as the owner says it>", ...],
+ "screen": "/<one lowercase segment, e.g. /tasks>", "endpoint": "/api/<plural>", "what_detail": "<one sentence: who else can use the endpoint>"}`,
+    layouts: `You propose three GENUINELY different layouts for the one screen of the plan in TASK: different in structure
+(a list, groups, a board, a table...), not in colour. Each is a View spec drawn over sample rows, so the owner sees it
+before anything is built.
+${View.Catalog.DOC}
+- No "data" queries: bind to the sample with {"$data": "/<name>"} and put the rows in "sample", e.g. {"tasks": [...]}.
+- 4 to 6 sample rows, realistic and in the language of the owner's words. Only the components above.
+- The actions the real screen will have point at the plan's endpoint (e.g. POST /api/tasks); they are never clicked here.
+- "round" above 0 means the owner saw earlier layouts and asked for three more: make them different from the obvious ones.
+Reply with ONLY: {"options": [{"title": "<at most 4 words>", "blurb": "<at most 12 words: who it suits>", "spec": <view>, "sample": {...}}, <three in all>]}`,
+  };
+
+  /** The pages, and the parts htmx fetches into them: strings of HTML in the kernel's world — hairlines, Mona Sans, no filled boxes. */
+  export namespace Page {
+    const RAIL = ["What", "Why", "Plan", "Pick", "Done"];
+
+    /** What every state shares: the header, the rail of the five steps, and the keys. */
+    export function frame(f: Frame, body: string): string {
+      return h("div", { class: "ks", "data-step": String(f.step) },
+          header(f),
+          h("main", { class: "ks-main" }, f.step < 6 ? rail(f) : "", body),
+          h("script", null, js));
+    }
+
+    /** Step 1, static: what the system should do, as one of three kinds and in the owner's words. */
+    export function what(f: Frame) {
+      const kind = f.input.kind || "interface";
+      return h("section", null,
+          h("h1", null, escape(f.empty ? `What should ${f.app} do?` : `What should ${f.app} do next?`)),
+          h("p", { class: "ks-lede" }, f.empty ? "Start from what you need, not from how to build it. You can change your mind at every step."
+            : escape(`The agent already knows what ${f.app} has. Start from what is missing.`)),
+          h("form", { class: "ks-pick", method: "get", action: "/_stem" },
+              h("input", { type: "hidden", name: "step", value: "2" }),
+              h("div", { class: "ks-choices ks-three" }, Object.entries(KINDS).map(([k, v]) => choice("kind", k, k === kind, v.title, v.blurb, v.glyph))),
+              h("div", { class: "ks-own" },
+                  h("input", { type: "text", name: "words", value: f.input.words || undefined, placeholder: "I want to manage my to-do list",
+                    "aria-label": "Say it in your words", required: true }),
+                  h("button", { class: "ks-btn", type: "submit" }, "Continue")),
+              h("p", { class: "ks-hint" }, "Say it in your own words. Nothing is built until you pick a layout.", keys(true))));
+    }
+
+    /** Step 2: the page answers at once, and the three reasons arrive by htmx from `/_stem/why`. */
+    export function why(f: Frame) {
+      return h("section", null, back(f), said({ ...f.input, why: "" }),
+          h("h1", null, "Why do you want it?"),
+          h("p", { class: "ks-lede" }, "What should be different once it exists? The answer decides what the screen puts first."),
+          part("why", f.input, loading("Reading what you said\u2026", 3)));
+    }
+
+    export function reasons(f: Frame, d: Drawn<Reason[]>) {
+      const typed = f.input.why && !d.answer.some((r) => r.title === f.input.why) ? f.input.why : "";
+      return h("form", { class: "ks-pick", method: "get", action: "/_stem" }, hidden(f.input, 3, ["kind", "words"]),
+          h("div", { class: "ks-choices" }, d.answer.map((r, k) => choice("why", r.title, f.input.why && !typed ? f.input.why === r.title : k === 0, r.title, r.blurb))),
+          h("div", { class: "ks-own" },
+              h("input", { type: "text", name: "own", value: typed || undefined, placeholder: "Or tell it why, in your words", "aria-label": "Why, in your words" }),
+              h("button", { class: "ks-btn", type: "submit" }, "Continue")),
+          h("p", { class: "ks-hint" }, "These options come from your first answer.", keys(true), cost(d, "these options")));
+    }
+
+    /** Step 3: WHY \u00b7 HOW \u00b7 WHAT, read before anything is built. */
+    export function plan(f: Frame) {
+      return h("section", null, back(f), said(f.input),
+          h("h1", null, "Here is the plan."),
+          h("p", { class: "ks-lede" }, "Read it before anything is built. This is the cheapest moment to be wrong."),
+          part("plan", f.input, h("div", null, loading("Writing the plan\u2026", 0),
+              h("dl", { class: "ks-plan" }, ["WHY", "HOW", "WHAT"].map((t) => h("div", null, h("dt", null, t), h("dd", null, h("i", { class: "ks-skel" }))))))));
+    }
+
+    export function planned(f: Frame, d: Drawn<Plan>) {
+      const p = d.answer;
+      return h("div", null,
+          h("dl", { class: "ks-plan" },
+              h("div", null, h("dt", null, "WHY"), h("dd", null, escape(p.why))),
+              h("div", null, h("dt", null, "HOW"), h("dd", null, escape(p.how), p.how_detail && h("small", null, escape(p.how_detail)))),
+              h("div", null, h("dt", null, "WHAT"), h("dd", null, "A ", h("b", null, escape(p.entity)), escape(p.fields.length ? `: ${p.fields.join(", ")}.` : "."),
+                  h("small", null, "A screen at ", h("code", null, escape(p.screen)), " and an endpoint at ", h("code", null, escape(p.endpoint)), ".",
+                      p.what_detail && ` ${escape(p.what_detail)}`)))),
+          h("div", { class: "ks-actions" },
+              h("form", { method: "get", action: "/_stem" }, hidden(f.input, 4, ["kind", "words", "why", "note"]),
+                  h("button", { class: "ks-btn", type: "submit" }, "Looks right")),
+              h("details", { class: "ks-change" },
+                  h("summary", { class: "ks-btn ks-ghost" }, "Change something"),
+                  h("form", { class: "ks-own", method: "get", action: "/_stem" }, hidden(f.input, 3, ["kind", "words", "why"]),
+                      h("input", { type: "text", name: "note", value: f.input.note || undefined, required: true, placeholder: "What should change?", "aria-label": "What should change" }),
+                      h("button", { class: "ks-btn", type: "submit" }, "Redo the plan"))),
+              cost(d, "this plan")));
+    }
+
+    /** Step 4: three layouts, each drawn over its sample rows by the same renderer a real screen uses. */
+    export function pick(f: Frame, p: Plan | undefined) {
+      return h("section", null, back(f), said(f.input),
+          h("h1", null, escape(`Three ways to show your ${p?.noun ?? "screen"}.`)),
+          h("p", { class: "ks-lede" }, "Pick the one closest to how you think. You can switch later."),
+          part("layouts", f.input, h("div", null, loading("Drawing three layouts\u2026", 0),
+              h("div", { class: "ks-options" }, [0, 1, 2].map(() => h("div", { class: "ks-choice ks-opt is-loading" },
+                  h("div", { class: "ks-pv" }), h("div", { class: "ks-cap" }, h("i", { class: "ks-skel" }))))))));
+    }
+
+    export function layouts(f: Frame, d: Drawn<Layout[]>) {
+      return h("form", { class: "ks-pick", method: "post", action: "/_stem/build" }, hidden(f.input, 5, ["kind", "words", "why", "note", "round"]),
+          h("div", { class: "ks-options" }, d.answer.map((l, k) => {
+            const shown = still(preview(l));
+            return h("label", { class: "ks-choice ks-opt" },
+                h("input", { type: "radio", name: "pick", value: String(k), checked: k === 0 }),
+                shown && h("div", { class: "ks-pv", inert: true }, h("div", { class: "ks-pv-in" }, shown)),
+                h("div", { class: "ks-cap" }, h("strong", null, escape(l.title)), l.blurb && h("small", null, escape(l.blurb))));
+          })),
+          h("div", { class: "ks-actions" },
+              h("button", { class: "ks-btn", type: "submit" }, "Build this one"),
+              h("a", { class: "ks-btn ks-ghost", href: href({ ...f.input, round: f.input.round + 1 }, { step: 4 }) }, "Show me three more"),
+              keys(true, false), cost(d, "three options")));
+    }
+
+    /** A layout drawn over its sample; a spec the renderer refuses shows no preview, and the card keeps its title and blurb. */
+    export function preview(l: { spec?: View.Spec; sample?: View.Data }): string {
+      if (!l.spec) return "";
+      try { return View.render(l.spec, l.sample ?? {}); } catch { return ""; }
+    }
+
+    /**
+     * A screen made safe to LOOK at inside the kickstart: no hx-* (a preview never calls the API), no form (a form inside
+     * the build form ends it early in the parser), and no name or required (they would join, or block, the build's submit).
+     */
+    export function still(html: string): string {
+      return html.replace(/<[a-z][^>]*>/gi, (tag) => tag.replace(/\s(?:hx-[a-z-]+|name|required|autofocus)(?:="[^"]*")?(?=[\s>\/])/g, ""))
+        .replace(/<(\/?)form\b/g, "<$1div");
+    }
+
+    /** Step 5 while the design runs — or after it stopped without saving a view. */
+    export function building(f: Frame, p: Plan, l: Layout | undefined, pick: number, running: boolean, phase: string) {
+      const chips = said(f.input, l?.title);
+      if (!running) return h("section", null, chips,
+          h("h1", null, "The build stopped."),
+          h("p", { class: "ks-lede" }, "Nothing was saved at ", h("code", null, escape(p.screen)), ". The server log says why; building again starts a fresh design."),
+          h("form", { class: "ks-actions", method: "post", action: "/_stem/build" }, hidden(f.input, 5, ["kind", "words", "why", "note", "round"]),
+              h("input", { type: "hidden", name: "pick", value: String(pick) }),
+              h("button", { class: "ks-btn", type: "submit" }, "Build it again"),
+              h("a", { class: "ks-back", href: href(f.input, { step: 4 }) }, "\u2190 Pick another")));
+      return h("section", { "data-ks-screen": p.screen }, chips,
+          h("h1", null, escape(`Building your ${p.noun}\u2026`)),
+          h("p", { class: "ks-lede" }, "The agent is designing ", h("code", null, escape(p.screen)), " from the layout you picked. This page follows it and shows the result by itself."),
+          h("p", { class: "ks-progress" }, h("span", { class: "loading loading-dots loading-sm" }), h("span", { id: "ks-phase" }, escape(phase || "starting"))));
+    }
+
+    /** Step 5 once the view exists: the screen itself, drawn with its real data, and what the build left in the memory. */
+    export function ready(f: Frame, p: Plan, l: Layout | undefined, screen: string, o: Overview) {
+      const made = o.screens.find((s) => s.path === p.screen);
+      const programs = o.api.filter((a) => a.kind !== "taught" && (a.route.startsWith(p.endpoint) || a.note));
+      const designed = [`${Interpreter.TOTAL} phases`, made?.ms ? `${Math.round(made.ms / 1000)} s` : "", made?.cost_usd ? usd(made.cost_usd) : ""];
+      return h("section", null, said(f.input, l?.title),
+          h("h1", null, escape(`Your ${p.noun} are ready.`)),
+          h("p", { class: "ks-lede" }, escape(`${f.app} has a screen at ${p.screen}. From now on, opening it costs no model call.`)),
+          h("div", { class: "ks-result" },
+              h("div", { class: "ks-shot" },
+                  h("div", { class: "ks-bar" }, h("i", null), h("i", null), h("i", null), h("code", { class: "ks-host", "data-path": p.screen })),
+                  h("div", { class: "ks-app", inert: true }, h("div", { class: "ks-app-in" }, still(screen)))),
+              h("div", { class: "ks-log" }, h("h2", null, "What happened"),
+                  h("ul", null,
+                      entry("primary", `The agent designed ${p.screen}`, designed.filter(Boolean).join(" \u00b7 ")),
+                      programs.length
+                        ? programs.map((a) => entry("success", `Program for ${a.method} ${a.route}`, [a.note, "no model on the next call"].filter(Boolean).join(" \u00b7 ")))
+                        : entry("faint", `No program yet for ${p.endpoint}`, "the first call is interpreted, and writes one"),
+                      entry("faint", `${p.screen} is stored`, "the next visit renders the view, no model")),
+                  h("div", { class: "ks-actions" },
+                      h("a", { class: "ks-btn", href: p.screen }, escape(`Open ${p.screen}`)),
+                      h("a", { class: "ks-back", href: "/_stem" }, "See your app \u2192")))));
+    }
+
+    /** Step 5 with no plan in the memory to build from: the URL outlived what it pointed at. */
+    export function lost(f: Frame) {
+      return h("section", null,
+          h("h1", null, "This kickstart is gone."),
+          h("p", { class: "ks-lede" }, "The plan it was building is not in the memory any more."),
+          h("div", { class: "ks-actions" }, h("a", { class: "ks-btn", href: href(f.input, { step: 1 }) }, "Start again")));
+    }
+
+    /** A part the agent could not draw: said on the page, never kept, and "try again" asks again. */
+    export function failed(f: Frame, error: string) {
+      return h("div", { class: "ks-failed", role: "alert" },
+          h("p", null, "The agent did not answer this step."),
+          h("code", null, escape(error.slice(0, 240))),
+          h("div", { class: "ks-actions" }, h("a", { class: "ks-btn ks-ghost", href: href(f.input, { step: f.step }) }, "Try again")));
+    }
+
+    /** Step 6: the screens, the API, what the memory holds and what the model cost — and where to grow it from. */
+    export function overview(f: Frame, o: Overview) {
+      const c = o.counts;
+      return h("section", null,
+          h("h1", null, escape(f.app)),
+          h("p", { class: "ks-lede" }, escape(`${count(o.screens.length, "screen")}, ${count(o.api.length, "endpoint")}, and everything it learned. Grow it from here.`)),
+          h("div", { class: "ks-doors" },
+              h("section", null, h("h2", null, "Screens ", h("span", { class: "ks-count" }, String(o.screens.length))),
+                  h("ul", { class: "ks-rows" }, o.screens.length ? o.screens.map((s) => h("li", null,
+                      h("a", { href: s.path.includes("{") ? undefined : s.path }, h("b", null, escape(s.path)), h("span", null, escape(s.title))),
+                      h("em", null, escape(s.ms ? `designed \u00b7 ${Math.round(s.ms / 1000)} s` : count(s.versions, "version"))),
+                      h("i", { class: "ks-pill" }, "view"))) : h("li", { class: "ks-none" }, "No screen yet."))),
+              h("section", null, h("h2", null, "API ", h("span", { class: "ks-count" }, String(o.api.length))),
+                  h("ul", { class: "ks-rows" }, o.api.length ? o.api.map((a) => h("li", null,
+                      h("div", null, h("b", null, h("span", { class: "ks-verb" }, escape(a.method)), " ", escape(a.route)), a.note && h("span", null, escape(a.note))),
+                      h("em", null, escape(a.runs ? count(a.runs, "call") : a.kind === "taught" ? "declared" : "not called yet")),
+                      h("i", { class: `ks-pill is-${a.kind}` }, a.kind))) : h("li", { class: "ks-none" }, "No endpoint yet.")))),
+          h("div", { class: "ks-memory" },
+              stat(String(c.programs), c.programs === 1 ? "program" : "programs"),
+              stat(String(c.teachings), c.teachings === 1 ? "teaching" : "teachings"),
+              stat(String(c.tables.length), `${c.tables.length === 1 ? "table" : "tables"}${c.tables.length ? ` \u00b7 ${c.tables.slice(0, 3).join(", ")}` : ""}`),
+              stat(String(c.runs), "agent runs"),
+              stat(usd(c.cost_usd), "spent on the model")),
+          h("h2", { class: "ks-grow-h" }, escape(`Grow ${f.app}`)),
+          h("p", { class: "ks-lede ks-tight" }, "Say what it should do next. It starts a short kickstart that already knows your app."),
+          h("form", { class: "ks-own", method: "get", action: "/_stem" },
+              h("input", { type: "hidden", name: "step", value: "1" }),
+              h("input", { type: "text", name: "words", required: true, placeholder: `What should ${f.app} do next?`, "aria-label": "Next, in your words" }),
+              h("button", { class: "ks-btn", type: "submit" }, "Start")));
+    }
+
+    function header(f: Frame) {
+      return h("header", { class: "ks-header" },
+          h("span", { class: "ks-mark", "aria-hidden": "true" }),
+          h("span", { class: "ks-name" }, escape(f.app)),
+          h("div", { class: "ks-facts" },
+              h("span", null, h("i", { class: "ks-dot" }), h("span", { class: "ks-idle" }, "agent idle"), h("span", { class: "ks-busy" }, "agent working")),
+              h("span", { class: "ks-mono ks-host" })),
+          h("nav", { "aria-label": "stem" },
+              h("a", { href: "/_stem", "aria-current": "page" }, f.empty ? "Kickstart" : "Overview"),
+              h("a", { href: "/_design" }, "Design system"),
+              h("a", { href: "/_system" }, "Memory")));
+    }
+
+    function rail(f: Frame) {
+      return h("ol", { class: "ks-rail", "aria-label": "steps" }, RAIL.map((label, k) => {
+        const n = k + 1, state = n < f.step ? "done" : n === f.step ? "now" : "";
+        const inner = [h("span", null), h("b", null, label)];
+        return h("li", { class: state || undefined, "aria-current": n === f.step ? "step" : undefined },
+            state === "done" ? h("a", { href: href(f.input, { step: n }) }, inner) : h("div", null, inner));
+      }));
+    }
+
+    function said(i: Input, ...more: (string | undefined)[]) {
+      return h("div", { class: "ks-said" },
+          KINDS[i.kind] && h("span", null, escape(KINDS[i.kind].title)),
+          i.words && h("span", null, h("b", null, escape(i.words))),
+          [i.why, ...more].filter(Boolean).map((s) => h("span", null, escape(String(s)))));
+    }
+
+    const back = (f: Frame) => h("a", { class: "ks-back", href: href(f.input, { step: f.step - 1 }) }, "\u2190 Back");
+
+    /** The answers a form carries forward, as hidden fields: only the ones the next step depends on. */
+    function hidden(i: Input, step: number, fields: (keyof Input)[]) {
+      return [h("input", { type: "hidden", name: "step", value: String(step) }),
+        fields.filter((k) => i[k] !== "" && i[k] !== 0).map((k) => h("input", { type: "hidden", name: k, value: String(i[k]) }))];
+    }
+
+    /** One option: a real radio, so the form, the keyboard and a screen reader all read the same choice. */
+    function choice(name: string, value: string, checked: boolean, title: string, blurb: string, glyph = "") {
+      return h("label", { class: "ks-choice" },
+          h("input", { type: "radio", name, value, checked }),
+          glyph && `<svg class="ks-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${glyph}</svg>`,
+          h("strong", null, escape(title)),
+          blurb && h("small", null, escape(blurb)));
+    }
+
+    /** The part a step fetches once the page is on screen; `placeholder` is what shows until it lands. */
+    const part = (step: Step, i: Input, placeholder: string) =>
+      h("div", { "hx-get": href(i).replace("/_stem?", `/_stem/${step}?`), "hx-trigger": "load", "hx-swap": "outerHTML" }, placeholder);
+
+    function loading(text: string, lines: number) {
+      return h("div", { class: "ks-loading", "aria-busy": "true" },
+          h("p", { class: "ks-hint" }, h("span", { class: "loading loading-dots loading-sm" }), escape(text)),
+          Array.from({ length: lines }, () => h("i", { class: "ks-skel is-tall" })));
+    }
+
+    const keys = (pick: boolean, go = true) => h("span", { class: "ks-keys" },
+        pick ? [h("kbd", null, "1"), h("kbd", null, "2"), h("kbd", null, "3"), " pick"] : "", pick && go ? " \u00b7 " : "", go ? [h("kbd", null, "\u21B5"), " continue"] : "");
+    const usd = (n: number) => (n > 0 && n < 0.01 ? "<$0.01" : `$${n.toFixed(2)}`);
+    const cost = (d: Drawn<unknown>, what: string) =>
+      d.cost_usd > 0 ? h("span", { class: "ks-cost" }, escape(`${what} cost ${usd(d.cost_usd)}${d.cached ? " \u00b7 kept" : ""}`)) : "";
+    const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const stat = (value: string, label: string) => h("div", null, h("strong", null, escape(value)), h("span", null, escape(label)));
+    const entry = (tone: string, what: string, detail: string) =>
+      h("li", null, h("i", { class: `is-${tone}` }), h("div", null, h("b", null, escape(what)), detail && h("span", null, escape(detail))));
+
+    /** 1–3 pick, Enter continues; the host is filled where it is read; step 5 follows the design on /_events and reloads on `changed`. */
+    const js = `
+document.querySelectorAll('.ks-host').forEach((el) => { el.textContent = location.host + (el.dataset.path || ''); });
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input[type=text], textarea, select, button, summary, a, dialog[open]')) return;
+  const form = document.querySelector('.ks-main form.ks-pick'); if (!form) return;
+  if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); return; }
+  const radios = form.querySelectorAll('input[type=radio]'), k = ['1', '2', '3'].indexOf(e.key);
+  if (k >= 0 && radios[k]) { radios[k].checked = true; radios[k].focus(); }
+});
+const building = document.querySelector('[data-ks-screen]');
+if (building) {
+  const screen = building.dataset.ksScreen, events = new EventSource('/_events'); let armed = false;
+  events.addEventListener('working', () => { armed = true; });
+  events.addEventListener('phase', (e) => { const p = JSON.parse(e.data); if (p.path === screen && p.name) document.getElementById('ks-phase').textContent = p.name; });
+  events.addEventListener('changed', (e) => { if (JSON.parse(e.data).path === screen) location.reload(); });
+  events.addEventListener('idle', () => { if (armed) setTimeout(() => location.reload(), 2500); });
+}`;
+
+    /** The prototype's world (design/kickstart.html), on the kernel's tokens. The scrim steps aside: these pages show their own waiting. */
+    const css = `
+body:has(.ks) #working { display: none; }
+.ks { --ks-muted: color-mix(in oklch, var(--color-base-content) 62%, transparent); --ks-faint: color-mix(in oklch, var(--color-base-content) 42%, transparent);
+  --ks-line: var(--color-base-300); --ks-soft: color-mix(in oklch, var(--color-primary) 8%, transparent);
+  --ks-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  min-height: 100svh; background: var(--color-base-100); color: var(--color-base-content); font-size: 15px; line-height: 1.55; }
+.ks code, .ks-mono { font-family: var(--ks-mono); font-size: .8125rem; overflow-wrap: anywhere; }
+.ks-header { display: flex; align-items: center; gap: 1rem; padding: 1rem 2rem; border-bottom: 1px solid var(--ks-line); }
+.ks-mark { flex: none; width: 1.375rem; height: 1.375rem; border-radius: .375rem; background: var(--color-base-content); display: grid; place-items: center; }
+.ks-mark::after { content: ""; width: .375rem; height: .75rem; border-radius: 1rem; background: var(--color-base-100); transform: translateY(1px); }
+.ks-name { font-weight: 640; letter-spacing: -.01em; }
+.ks-facts { display: flex; gap: 1.25rem; min-width: 0; color: var(--ks-muted); font-size: .8125rem; }
+.ks-facts > span { display: inline-flex; align-items: center; gap: .375rem; }
+.ks-dot { width: .4375rem; height: .4375rem; border-radius: 1rem; background: var(--color-success); display: inline-block; }
+body.working .ks-dot { background: var(--color-primary); animation: breathe 1.2s ease-in-out infinite; }
+.ks-busy, body.working .ks-idle { display: none; } body.working .ks-busy { display: inline; }
+.ks-header nav { margin-left: auto; display: flex; gap: .25rem; font-size: .875rem; }
+.ks-header nav a { padding: .375rem .625rem; border-radius: .375rem; color: var(--ks-muted); text-decoration: none; }
+.ks-header nav a[aria-current] { color: var(--color-base-content); background: var(--color-base-200); font-weight: 560; }
+.ks-main { max-width: 52rem; margin: 0 auto; padding: 3rem 2rem 4rem; }
+.ks-rail { display: flex; gap: .375rem; margin: 0 0 2.5rem; padding: 0; list-style: none; }
+.ks-rail li { flex: 1; } .ks-rail li > * { display: block; color: inherit; text-decoration: none; }
+.ks-rail span { display: block; height: 3px; border-radius: 2px; background: var(--ks-line); }
+.ks-rail li.done span { background: var(--color-base-content); } .ks-rail li.now span { background: var(--color-primary); }
+.ks-rail b { display: block; margin-top: .5rem; font-size: .75rem; font-weight: 520; color: var(--ks-faint); }
+.ks-rail li.done b, .ks-rail li.now b { color: var(--color-base-content); }
+.ks-back { display: inline-flex; gap: .375rem; margin-bottom: 1rem; font-size: .8125rem; color: var(--ks-muted); text-decoration: none; }
+.ks-back:hover { color: var(--color-base-content); }
+.ks-actions .ks-back { margin: 0; }
+.ks-keys { font-size: .75rem; color: var(--ks-faint); }
+.ks-keys kbd { font-family: inherit; font-size: .6875rem; padding: 0 .3125rem; margin-right: .125rem; border-radius: .25rem; border: 1px solid var(--ks-line); border-bottom-width: 2px; }
+.ks-said { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.ks-said span { font-size: .8125rem; padding: .25rem .625rem; border-radius: 1rem; background: var(--color-base-200); color: var(--ks-muted); overflow-wrap: anywhere; }
+.ks-said b { color: var(--color-base-content); font-weight: 560; }
+.ks h1 { font-size: 2.25rem; font-weight: 640; line-height: 1.12; letter-spacing: -.025em; text-wrap: balance; overflow-wrap: anywhere; }
+.ks-lede { margin-top: .625rem; max-width: 36rem; font-size: 1.0625rem; color: var(--ks-muted); }
+.ks-tight { margin-top: .375rem; }
+.ks-choices { display: grid; gap: .75rem; margin-top: 2rem; }
+.ks-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ks-choice { position: relative; display: block; min-width: 0; cursor: pointer; padding: 1.125rem 1.125rem 1.25rem; border-radius: var(--radius-box);
+  background: var(--color-base-100); box-shadow: 0 0 0 1px var(--ks-line); }
+.ks-choice > input { position: absolute; opacity: 0; pointer-events: none; }
+.ks-choice:hover { box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-base-content) 30%, transparent); }
+.ks-choice:has(> input:checked) { box-shadow: 0 0 0 2px var(--color-primary); background: var(--ks-soft); }
+.ks-choice:has(> input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.ks-choice strong { display: block; font-size: 1rem; font-weight: 620; }
+.ks-choice small { display: block; margin-top: .25rem; font-size: .875rem; color: var(--ks-muted); line-height: 1.45; }
+.ks-glyph { display: block; width: 1.75rem; height: 1.75rem; margin-bottom: .875rem; color: var(--color-primary); }
+.ks-own { margin-top: 1rem; display: flex; gap: .5rem; }
+.ks-own input { flex: 1; min-width: 0; font: inherit; font-size: 1rem; padding: .75rem .875rem; border: 0; border-radius: var(--radius-box); color: var(--color-base-content);
+  background: var(--color-base-100); box-shadow: 0 0 0 1px var(--ks-line), 0 8px 22px -18px oklch(21% .012 257 / .35); }
+.ks-own input:focus { outline: none; box-shadow: 0 0 0 2px var(--color-primary); }
+.ks-btn { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font: inherit; font-weight: 560; font-size: .9375rem;
+  padding: .6875rem 1.125rem; border: 0; border-radius: var(--radius-box); cursor: pointer; text-decoration: none; background: var(--color-base-content); color: var(--color-base-100); }
+.ks-ghost { background: transparent; color: var(--ks-muted); box-shadow: 0 0 0 1px var(--ks-line); }
+.ks-actions { display: flex; flex-wrap: wrap; gap: .625rem; margin-top: 2rem; align-items: center; }
+.ks-actions > form { display: contents; }
+.ks-cost { margin-left: auto; font-size: .8125rem; color: var(--ks-faint); }
+.ks-hint { margin-top: .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; font-size: .8125rem; color: var(--ks-faint); }
+.ks-hint .ks-cost { margin-left: auto; }
+.ks-change summary { list-style: none; } .ks-change summary::-webkit-details-marker { display: none; }
+.ks-change[open] { order: 3; flex-basis: 100%; } .ks-change[open] summary { display: none; } .ks-change .ks-own { margin-top: 0; }
+.ks-loading { margin-top: 2rem; }
+.ks-skel { display: block; height: .75rem; margin: .375rem 0; border-radius: .25rem; background: var(--color-base-200); animation: breathe 1.4s ease-in-out infinite; }
+.ks-skel.is-tall { height: 4.25rem; margin-top: .75rem; border-radius: var(--radius-box); }
+.ks-plan { margin-top: 2rem; border-top: 1px solid var(--ks-line); }
+.ks-plan > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 1.25rem; padding: 1.125rem 0; border-bottom: 1px solid var(--ks-line); }
+.ks-plan dt { padding-top: .125rem; font-size: .8125rem; font-weight: 600; letter-spacing: .01em; color: var(--color-primary); }
+.ks-plan dd { min-width: 0; font-size: 1rem; }
+.ks-plan dd small { display: block; margin-top: .25rem; color: var(--ks-muted); font-size: .875rem; }
+.ks-plan code { background: var(--color-base-200); padding: .0625rem .3125rem; border-radius: .25rem; }
+.ks-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+.ks-opt { padding: 0; overflow: hidden; }
+.ks-pv { height: 12.5rem; overflow: hidden; pointer-events: none; background: var(--color-base-200); border-bottom: 1px solid var(--ks-line); }
+.ks-pv-in { width: 250%; transform: scale(.4); transform-origin: 0 0; }
+.ks-pv-in .kernel-page, .ks-app-in .kernel-page { padding-top: 2rem; }
+.ks-opt.is-loading .ks-pv { animation: breathe 1.4s ease-in-out infinite; }
+.ks-cap { padding: .875rem 1rem 1rem; }
+.ks-result { margin-top: 2rem; display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: 2rem; align-items: start; }
+.ks-shot { min-width: 0; overflow: hidden; border-radius: var(--radius-box); background: var(--color-base-100);
+  box-shadow: 0 0 0 1px var(--ks-line), 0 18px 40px -26px oklch(21% .012 257 / .45); }
+.ks-bar { display: flex; align-items: center; gap: .375rem; padding: .5rem .75rem; border-bottom: 1px solid var(--ks-line); background: var(--color-base-200); font-size: .75rem; color: var(--ks-muted); }
+.ks-bar i { width: .5rem; height: .5rem; border-radius: 1rem; background: var(--ks-line); }
+.ks-bar code { margin-left: .5rem; font-size: .75rem; }
+.ks-app { height: 26rem; overflow: hidden; pointer-events: none; }
+.ks-app-in { width: 166.67%; transform: scale(.6); transform-origin: 0 0; }
+.ks-log h2 { margin-bottom: .5rem; font-size: 1rem; font-weight: 620; }
+.ks-log ul { margin: 0; padding: 0; }
+.ks-log li { list-style: none; display: grid; grid-template-columns: .5rem minmax(0, 1fr); gap: .625rem; padding: .625rem 0; border-top: 1px solid var(--ks-line); font-size: .8125rem; }
+.ks-log li i { width: .5rem; height: .5rem; margin-top: .375rem; border-radius: 1rem; background: color-mix(in oklch, var(--color-base-content) 30%, transparent); }
+.ks-log li i.is-primary { background: var(--color-primary); } .ks-log li i.is-success { background: var(--color-success); }
+.ks-log li b { font-weight: 560; overflow-wrap: anywhere; } .ks-log li span { display: block; color: var(--ks-muted); }
+.ks-log .ks-actions { margin-top: 1.25rem; }
+.ks-progress { margin-top: 2rem; display: flex; align-items: center; gap: .75rem; font-size: .9375rem; color: var(--ks-muted); }
+.ks-failed { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--ks-line); }
+.ks-failed code { display: block; margin-top: .5rem; color: var(--color-error); }
+.ks-doors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem; margin-top: 2.25rem; }
+.ks-doors h2, .ks-grow-h { display: flex; align-items: baseline; gap: .5rem; font-size: 1.125rem; font-weight: 620; }
+.ks-grow-h { margin-top: 3rem; }
+.ks-count { font-size: .8125rem; font-weight: 500; color: var(--ks-faint); }
+.ks-rows { margin: .75rem 0 0; padding: 0; border-top: 1px solid var(--ks-line); }
+.ks-rows li { list-style: none; display: flex; align-items: center; gap: .875rem; padding: .875rem 0; border-bottom: 1px solid var(--ks-line); }
+.ks-rows li > a, .ks-rows li > div { flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.ks-rows b { display: block; font-family: var(--ks-mono); font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
+.ks-rows li > * > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8125rem; color: var(--ks-muted); }
+.ks-rows b .ks-verb { display: inline; margin-right: .25rem; font-size: .75rem; color: var(--color-primary); }
+.ks-rows em { font-style: normal; font-size: .75rem; color: var(--ks-faint); white-space: nowrap; }
+.ks-rows .ks-none { font-size: .875rem; color: var(--ks-faint); }
+.ks-pill { font-style: normal; font-size: .6875rem; font-weight: 600; padding: .125rem .5rem; border-radius: 1rem; color: var(--ks-muted); background: color-mix(in oklch, var(--color-base-content) 7%, transparent); }
+.ks-pill.is-program { color: var(--color-success); background: color-mix(in oklch, var(--color-success) 12%, transparent); }
+.ks-memory { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 2.25rem; border-top: 1px solid var(--ks-line); border-bottom: 1px solid var(--ks-line); }
+.ks-memory div { min-width: 0; padding: 1rem 0 1rem 1.125rem; } .ks-memory div + div { border-left: 1px solid var(--ks-line); } .ks-memory div:first-child { padding-left: 0; }
+.ks-memory strong { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ks-memory span { display: block; margin-top: .375rem; font-size: .8125rem; color: var(--ks-muted); overflow-wrap: anywhere; }
+@media (max-width: 52rem) {
+  .ks-header { flex-wrap: wrap; padding: .875rem 1.25rem; } .ks-facts { order: 3; width: 100%; flex-wrap: wrap; gap: .25rem .875rem; } .ks-header nav { display: none; }
+  .ks-main { padding: 2rem 1.25rem 3rem; } .ks h1 { font-size: 1.75rem; }
+  .ks-three, .ks-options, .ks-result, .ks-doors { grid-template-columns: minmax(0, 1fr); } .ks-doors { gap: 1.75rem; }
+  .ks-rail b { display: none; } .ks-own { flex-direction: column; }
+  .ks-plan > div { grid-template-columns: minmax(0, 1fr); gap: .25rem; }
+  .ks-memory { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ks-memory div { padding-left: 0 !important; border-left: 0 !important; border-top: 1px solid var(--ks-line); } .ks-memory div:nth-child(-n+2) { border-top: 0; }
+  .ks-cost, .ks-hint .ks-cost { margin-left: 0; }
+}
+@media (hover: none) and (pointer: coarse) { .ks-keys { display: none; } }`;
+
+    /** What the Shell puts in <head> for these pages. */
+    export const head = `<style>${css}</style>`;
+  }
+}
+
 export namespace Server {
   export type Options = {
     /** The <app>.ts that defines the system: read once, before the first request. */
@@ -3007,6 +3636,11 @@ export namespace Server {
       });
     }
     hono.post("/_judge", async (c) => judge(((await readBody(c.req.raw)) ?? {}) as Record<string, string>));
+    // The kickstart, and once the system is not empty its overview. The page answers at once; each step's agent part
+    // is fetched from `/_stem/<step>` after it, so no GET ever waits on the model.
+    hono.get("/_stem", (c) => stem(c.req.query()));
+    for (const step of ["why", "plan", "layouts"] as const) hono.get(`/_stem/${step}`, (c) => part(step, c.req.query()));
+    hono.post("/_stem/build", async (c) => build(((await readBody(c.req.raw)) ?? {}) as Record<string, string>));
     // The app's own routes, after every `/_*` of the kernel and before the `*` that resolves by memory. Hono
     // matches in declaration order, so this placement IS the precedence rule.
     mount(hono, current.routes ?? {});
@@ -3019,6 +3653,8 @@ export namespace Server {
       // Empty reads the declaration back instead of writing one.
       const declared = url.searchParams.get("_meta") ?? (typeof (body as { _meta?: unknown })?._meta === "string" ? (body as { _meta: string })._meta : null);
       if (declared !== null && declared.trim() === "") return send(200, await believes(match));
+      // An empty system has nothing to show at `/`: the kickstart asks what it should be. Any accept, so a curl sees it too.
+      if (match.method === "GET" && match.path === "/" && declared === null && (await memory.empty())) return c.redirect("/_stem", 302);
       // A page that DECLARES does not wait for the design: it gets the same shell a second visitor
       // gets, and the Pulse fills it in. Measured 22/09: awaiting here held one GET open for 422 s.
       if (declared !== null && html) {
@@ -3073,7 +3709,6 @@ export namespace Server {
       // agent actually starts (see `Pulse.working++`): trusting it here would race, and the loser of that race
       // starts a SECOND design on the same path.
       if (!spec && (declaring || Pulse.designing.has(path))) { spec = View.BOOTSTRAP; by = "designing"; }
-      if (!spec && path === "/" && (await memory.empty())) { spec = View.BOOTSTRAP; by = "bootstrap"; }
       // An agent is already designing: show the blank page with the drafting pill instead of starting a second
       // design on this GET (which also held the request open for minutes).
       if (!spec && Pulse.working > 0) { spec = View.BOOTSTRAP; by = "designing"; }
@@ -3134,11 +3769,11 @@ export namespace Server {
       if (!intent) return send(400, { error: "intent is required" });
       if (from) { Pulse.gates.get(path)?.({ decision: "abort" }); Pulse.gates.delete(path); }
       await memory.teach(body.scope ?? "SYSTEM ", intent);
-      const { ms, turns, tool_calls, answer } = await (await agent).design(
+      const { ms, turns, tool_calls, cost_usd, answer } = await (await agent).design(
         { goal: `The owner just said what this should become. Write the view for GET ${path}.`, intent,
           preferences: preferences === "off" ? [] : await memory.preferences() },
         (sql) => memory.app(sql), path, interactive, from && lived ? { from, phases: lived.phases } : undefined);
-      if (answer.view) await memory.saveView(path, answer.view, { kind: "intent", intent, ms, preferences: preferences !== "off" });
+      if (answer.view) await memory.saveView(path, answer.view, { kind: "intent", intent, ms, cost_usd, preferences: preferences !== "off" });
       // A design may also bring the views for its route templates (e.g. /notebooks/{id}).
       for (const extra of (answer as { views?: { path: string; view: View.Spec }[] }).views ?? []) {
         if (extra?.path && extra.view) await memory.saveView(extra.path, extra.view, { kind: "intent", intent, ms, template: true });
@@ -3199,6 +3834,89 @@ export namespace Server {
       const [ctl, trt] = flip ? [answer.b, answer.a] : [answer.a, answer.b];
       const score = (xs: boolean[] = []) => `${xs.filter(Boolean).length}/${preferences.length}`;
       return send(200, { control: score(ctl), treatment: score(trt), flip, notes: answer.notes, ms });
+    }
+
+    /** `/_stem`: the step the URL names; without one, the kickstart on an empty system and the overview on any other. */
+    async function stem(q: Record<string, string>) {
+      const input = Kickstart.input(q);
+      const empty = await memory.empty();
+      let step = Number(q.step) || (empty ? 1 : 6);
+      // A step whose answers are missing from the URL falls back to the one that asks for them.
+      if (step > 1 && step < 6 && !input.words) step = 1;
+      else if (step > 2 && step < 6 && !input.why) step = 2;
+      const f: Kickstart.Frame = { app: appName(), step, input, empty };
+      const kept = async <T>(s: Kickstart.Step) => (await memory.kickstart(Kickstart.key(s, input)))?.answer as T | undefined;
+      const pick = Number(q.pick) || 0;
+      const body = step === 1 ? Kickstart.Page.what(f)
+        : step === 2 ? Kickstart.Page.why(f)
+        : step === 3 ? Kickstart.Page.plan(f)
+        : step === 4 ? Kickstart.Page.pick(f, await kept<Kickstart.Plan>("plan"))
+        : step === 5 ? await built(f, await kept<Kickstart.Plan>("plan"), (await kept<Kickstart.Layout[]>("layouts"))?.[pick], pick)
+        : Kickstart.Page.overview(f, await memory.overview());
+      return send(200, View.Shell({ title: `${f.app} · ${step === 6 ? "overview" : "kickstart"}`, body: Kickstart.Page.frame(f, body), path: "/_stem",
+        tokens: await memory.tokens(), head: `${current.head ?? ""}${Kickstart.Page.head}` }), HTML);
+    }
+
+    /** Step 5: the build in progress, the build that stopped, or the screen it made, drawn with its real data. */
+    async function built(f: Kickstart.Frame, plan: Kickstart.Plan | undefined, layout: Kickstart.Layout | undefined, pick: number) {
+      if (!plan) return Kickstart.Page.lost(f);
+      const view = await memory.view(plan.screen);
+      if (!view) return Kickstart.Page.building(f, plan, layout, pick, Pulse.designing.has(plan.screen), String(Pulse.phases.get(plan.screen)?.name ?? ""));
+      return Kickstart.Page.ready(f, plan, layout, View.render(view, (await memory.viewData(view)).data), await memory.overview());
+    }
+
+    /** One part of a step, drawn by the agent or read back from the memory; a failure is a line on the page, never a hang. */
+    async function part(step: Kickstart.Step, q: Record<string, string>) {
+      const input = Kickstart.input(q);
+      const f: Kickstart.Frame = { app: appName(), step: { why: 2, plan: 3, layouts: 4 }[step], input, empty: await memory.empty() };
+      try {
+        if (step === "why") return send(200, Kickstart.Page.reasons(f, await drawn<Kickstart.Reason[]>("why", input)), HTML);
+        const plan = await drawn<Kickstart.Plan>("plan", input);
+        if (step === "plan") return send(200, Kickstart.Page.planned(f, plan), HTML);
+        return send(200, Kickstart.Page.layouts(f, await drawn<Kickstart.Layout[]>("layouts", input, { plan: plan.answer })), HTML);
+      } catch (e) {
+        console.error(`[kickstart ${step}]`, String(e));
+        return send(200, Kickstart.Page.failed(f, String(e)), HTML);
+      }
+    }
+
+    /** An agent answer by the key of its inputs: kept in the memory once, and a reload in the middle of a call joins it. */
+    async function drawn<T>(step: Kickstart.Step, input: Kickstart.Input, extra: Record<string, unknown> = {}): Promise<Kickstart.Drawn<T>> {
+      const key = Kickstart.key(step, input);
+      const kept = await memory.kickstart(key);
+      if (kept) return { answer: kept.answer as T, cost_usd: Number(kept.cost_usd) || 0, cached: true };
+      const running = Kickstart.inflight.get(key) ?? (async () => {
+        const known = { screens: (await memory.views()).map((v) => v.path), api: (await memory.taught()).map((t) => t.scope).filter((s) => / \/api\b/.test(s)) };
+        const { ms, cost_usd, answer } = await (await agent).kickstart(Kickstart.PROMPT[step], { app: appName(), ...Kickstart.task(input), known, ...extra });
+        const accepted = Kickstart.accept(step, answer);
+        await memory.keepKickstart(key, step, accepted, { ms, cost_usd });
+        return { answer: accepted, cost_usd, cached: false };
+      })().finally(() => Kickstart.inflight.delete(key));
+      Kickstart.inflight.set(key, running);
+      return running as Promise<Kickstart.Drawn<T>>;
+    }
+
+    /**
+     * "Build this one": ONE declaration made of everything the kickstart gathered, handed to the same declare() a
+     * `GET <screen>?_meta=` takes and not awaited, exactly like that branch — the design takes minutes, and step 5
+     * watches it on /_events. A second submit while the screen is being designed starts nothing.
+     */
+    async function build(q: Record<string, string>) {
+      const input = Kickstart.input(q);
+      const pick = Number(q.pick) || 0;
+      const plan = (await memory.kickstart(Kickstart.key("plan", input)))?.answer as Kickstart.Plan | undefined;
+      const layout = ((await memory.kickstart(Kickstart.key("layouts", input)))?.answer as Kickstart.Layout[] | undefined)?.[pick];
+      if (!plan) return new Response(null, { status: 303, headers: { location: Kickstart.href(input, { step: 3 }) } });
+      if (!Pulse.designing.has(plan.screen)) {
+        Pulse.designing.add(plan.screen);
+        void declare({ method: "GET", path: plan.screen }, Kickstart.declaration(input, plan, layout), true).catch((e) => console.error("[declare]", String(e)));
+      }
+      return new Response(null, { status: 303, headers: { location: Kickstart.href(input, { step: 5, pick }) } });
+    }
+
+    /** What the kickstart calls this system: the app's name, else its slug, else the folder it was started in. */
+    function appName() {
+      return current.name ?? (slugAtual !== "anon" ? slugAtual : process.getBuiltinModule("node:path").basename(process.cwd()));
     }
 
     /**
