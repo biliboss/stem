@@ -2792,6 +2792,8 @@ export namespace Server {
     agent?: string;
     tools: string;
     slug?: string;
+    /** `false` keeps the slug (the cache key, the name) but serves on a plain localhost port, with no Caddy. */
+    publish?: boolean;
     open: boolean;
   };
 
@@ -2929,9 +2931,9 @@ export namespace Server {
     });
     console.error(`stem on :${server.port} · db ${o.db} · agent ${interpreter ? interpreter.agent : "nenhum"} · tools ${o.tools}`);
     let url = `${base}/`;
-    if (o.slug) {
+    if (o.slug && o.publish !== false) {
       const slug = o.slug;
-      url = `${await Caddy.publish(slug, Number(server.port))}/`;
+      url =`${await Caddy.publish(slug, Number(server.port))}/`;
       console.error(`published ${url}`);
       const leave = () => { void Caddy.unpublish(slug).finally(() => process.exit(0)); };
       process.on("SIGINT", leave).on("SIGTERM", leave);
@@ -3429,6 +3431,8 @@ addEventListener("message", (e) => {
 export namespace Cli {
   export const USAGE = `usage:
   bun stem.ts serve --account <name> [<app>.ts] [--new] [--no-open] [--slug <name>] [--port <n>] [--db <url>] [--agent <cmd>|--no-agent] [--tools json|mcp]
+  bun stem.ts new <app> [--slug <name>] [--account <name>] [--meta "<what it is for>"] [--caddy|--no-caddy] [--no-open]
+                                                asks what the flags left open, writes <app>/ and serves it
   bun stem.ts check <app>.ts                    the rules the app claims, verified; exits 1 on the first broken one
   bun stem.ts acp --account <name> caps | list [--cwd <dir>|--all] | daemon [--cwd <dir>] [--session <id>] [--allow]
 
@@ -3438,11 +3442,12 @@ export namespace Cli {
     | { verb: "serve"; options: Server.Options; account?: string }
     | { verb: "check"; app: string }
     | { verb: "acp caps" | "acp list" | "acp daemon"; agent: string; cwd: string; all: boolean; session?: string; allow: boolean; account?: string }
+    | { verb: "new"; app?: string; slug?: string; account?: string; meta?: string; caddy?: boolean; open: boolean }
     | { verb: "usage" };
 
   export function parse(argv: string[]): Command {
     const [verb, ...rest] = argv;
-    const valued = new Set(["--slug", "--port", "--db", "--agent", "--tools", "--cwd", "--session", "--account"]);
+    const valued = new Set(["--slug", "--port", "--db", "--agent", "--tools", "--cwd", "--session", "--account", "--meta"]);
     const flag = (name: string) => { const i = rest.indexOf(name); return i >= 0 ? rest[i + 1] : undefined; };
     const positionals = rest.filter((a, i) => !a.startsWith("--") && !valued.has(rest[i - 1]));
     const agent = flag("--agent") ?? "claude-agent-acp";
@@ -3462,7 +3467,124 @@ export namespace Cli {
     if (sub === "acp caps" || sub === "acp list" || sub === "acp daemon") {
       return { verb: sub, agent, account: flag("--account"), cwd: flag("--cwd") ?? process.cwd(), all: rest.includes("--all"), session: flag("--session"), allow: rest.includes("--allow") };
     }
+    if (verb === "new") {
+      return { verb, app: positionals[0], slug: flag("--slug"), account: flag("--account"), meta: flag("--meta"),
+        caddy: rest.includes("--no-caddy") ? false : rest.includes("--caddy") ? true : undefined, open: !rest.includes("--no-open") };
+    }
     return { verb: "usage" };
+  }
+
+  /**
+   * `stem new <app>`: the door in front of the kickstart. Four questions, three files, one link, then `serve`.
+   * The pieces are separate so a test can drive each without a TTY, a HOME or an agent.
+   */
+  export namespace New {
+    export type Given = Extract<Command, { verb: "new" }>;
+    export type Answers = { app: string; slug: string; account: string; meta: string; caddy: boolean };
+    /** One question, one line back; `undefined` means nobody is there to answer. */
+    export type Ask = (question: string) => string | undefined;
+
+    const SLUG = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+    /** What stops `new` before it asks anything: one line saying which, or nothing. */
+    export function refusal(given: Given, cwd: string): string | undefined {
+      if (!given.app) return "stem new <app>: the app name is missing";
+      const slug = given.slug ?? given.app;
+      if (!SLUG.test(slug)) return `--slug ${slug}: a slug is lowercase letters, digits and dashes (it becomes ${slug}.localhost)`;
+      const fs = process.getBuiltinModule("node:fs");
+      const dir = process.getBuiltinModule("node:path").resolve(cwd, given.app);
+      if (fs.existsSync(dir) && (!fs.statSync(dir).isDirectory() || fs.readdirSync(dir).length)) return `${dir} already exists and is not empty`;
+      return undefined;
+    }
+
+    /** The terminal's ask; no TTY answers nothing, so a missing flag fails instead of hanging. */
+    export const tty: Ask = (question) => (process.stdin.isTTY ? prompt(question)?.trim() || undefined : undefined);
+
+    /** Asks only what the flags left open. Throws naming the flag when nobody answers. */
+    export function answers(given: Given, ask: Ask): Answers {
+      const need = (answer: string | undefined, flagName: string) => {
+        if (!answer) throw new Error(`${flagName} is required: no answer, and no terminal to ask`);
+        return answer;
+      };
+      const names = Object.keys(Acp.Account.DIRS);
+      let account = given.account;
+      while (!account || !names.includes(account)) {
+        if (account) console.error(`--account ${account}? only: ${names.join(" | ")}`);
+        account = need(ask(`which Claude subscription pays the agent? (${names.join(" | ")}) `), "--account");
+      }
+      const meta = given.meta ?? need(ask("what is it for, in one sentence? "), "--meta");
+      const caddy = given.caddy ?? /^y/i.test(need(ask(`publish on Caddy as ${given.slug ?? given.app}.localhost? (y/n) `), "--caddy|--no-caddy"));
+      return { app: given.app!, slug: given.slug ?? given.app!, account, meta, caddy };
+    }
+
+    /** The URL the app answers on: Caddy's name, or serve's plain default port. */
+    const origin = (a: Answers) => (a.caddy ? `http://${a.slug}.localhost` : "http://localhost:3000");
+
+    /** The three things an app is — app.ts, SKILL.md, .system/ — and the skill linked globally. */
+    export function write(dir: string, a: Answers, home: string) {
+      const fs = process.getBuiltinModule("node:fs");
+      const path = process.getBuiltinModule("node:path");
+      const link = path.join(home, ".claude", "skills", a.slug);
+      // Checked before any write: a refusal here must leave nothing behind.
+      const existing = fs.lstatSync(link, { throwIfNoEntry: false });
+      if (existing && !(existing.isSymbolicLink() && path.resolve(path.dirname(link), fs.readlinkSync(link)) === dir)) {
+        throw new Error(`${link} already points elsewhere: remove it by hand, new does not overwrite`);
+      }
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "app.ts"), `// ${a.slug} — what this system is before anyone uses it. The screens, routes and data
+// live in .system/, made by its agent; this file holds only what git should keep.
+export default {
+  name: ${JSON.stringify(a.slug)},
+  // scope → instruction: "METHOD /path" says what an address means.
+  teach: {} as Record<string, string>,
+  // "METHOD /path" → handler: where a capability that is not SQL answers.
+  routes: {} as Record<string, (req: Request, params: Record<string, string>) => Response | Promise<Response>>,
+};
+`);
+      fs.writeFileSync(path.join(dir, "SKILL.md"), `---
+name: ${a.slug}
+description: Operate the ${a.slug} Stem system — ${a.meta.replace(/\n/g, " ")}. Use when the task is to build, change or read something inside ${a.slug}, through its MCP at ${origin(a)}/_mcp.
+---
+
+# ${a.slug}
+
+**${a.meta}**
+
+This is a Stem system: every screen, route and rule lives in its database (\`.system/\`) and is made by its own
+agent. You change it by talking to it through \`${origin(a)}/_mcp\`, not by writing its code.
+
+## Serving it
+
+\`\`\`sh
+cd ${dir}
+bunx @biliboss/stem serve app.ts --new --slug ${a.slug} --tools mcp --account ${a.account}${a.caddy ? "" : " --port 3000"}
+claude mcp add --transport http --scope local ${a.slug} ${origin(a)}/_mcp
+\`\`\`
+`);
+      // The same rule serve --new uses: one place knows where a fresh system keeps its database.
+      const db = Memory.address({ fresh: true, cwd: dir }).replace(/^\w+:\/\//, "");
+      fs.mkdirSync(path.dirname(db), { recursive: true });
+      fs.mkdirSync(path.dirname(link), { recursive: true });
+      if (!existing) fs.symlinkSync(dir, link);
+      return { dir, link, db };
+    }
+
+    export async function run(given: Given, ask: Ask = tty) {
+      const fail = (line: string) => { console.error(line); process.exit(1); };
+      const refused = refusal(given, process.cwd());
+      if (refused) return fail(refused);
+      let a: Answers;
+      try { a = answers(given, ask); } catch (e) { return fail((e as Error).message); }
+      const dir = process.getBuiltinModule("node:path").resolve(given.app!);
+      const home = process.env.HOME ?? process.getBuiltinModule("node:os").homedir();
+      let out: ReturnType<typeof write>;
+      try { out = write(dir, a, home); } catch (e) { return fail((e as Error).message); }
+      console.error(`${a.slug} · ${out.dir} · skill ${out.link}`);
+      Acp.Account.resolve(a.account);
+      process.chdir(dir);
+      return Server.serve({ app: `${dir}/app.ts`, db: Memory.address({ fresh: true, cwd: dir }),
+        port: a.caddy ? 0 : 3000, agent: "claude-agent-acp", tools: "mcp", slug: a.slug, publish: a.caddy, open: given.open });
+    }
   }
 }
 
@@ -3470,6 +3592,8 @@ async function main() {
   const command = Cli.parse(process.argv.slice(2));
   // check needs no Claude account: it reads the app file and does arithmetic, which is why it belongs in a build.
   if (command.verb === "check") return Server.checkApp(command.app);
+  // new asks the account itself, among its four questions, and exits 1 rather than 2 when nobody answers.
+  if (command.verb === "new") return Cli.New.run(command);
   // `--no-agent` não pergunta a assinatura porque não há agente a pagar: um sistema que
   // só serve a view guardada e as rotas do app roda em produção, onde não existe conta.
   const semAgente = command.verb === "serve" && !command.options.agent;

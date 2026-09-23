@@ -1,7 +1,14 @@
 {
-  "name": "stem",
-  "private": true,
+  "name": "@biliboss/stem",
+  "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "stem": "stem.ts"
+  },
+  "files": [
+    "stem.ts",
+    "cache.ts"
+  ],
   "scripts": {
     "serve": "bun stem.ts serve",
     "dev": "bun --hot stem.ts serve",

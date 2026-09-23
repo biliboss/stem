@@ -25,7 +25,7 @@ class Memory          o SurrealDB embutido e a COSTURA: define() escreve defini�
 const Pulse           SSE, drafts, gates e phases; sobrevive ao `bun --hot` em globalThis
 class Interpreter     o agente ACP: PHASES · design() · resolve() · compile() · judge()
 namespace Server      serve() e app(): o Hono com cada rota, na ordem em que o pedido as encontra
-namespace Cli         serve [<app>.ts] · acp caps|list|daemon — todos exigem --account <nome>
+namespace Cli         serve [<app>.ts] · new <app> · acp caps|list|daemon — todos exigem --account <nome>; `new` o pergunta entre as quatro
 function main()
 .storybook/           o catálogo: os 58 do DaisyUI 5 e os do kernel — `pnpm storybook` na 6006
 docs/                 os experimentos e as pesquisas; experiments/ tem os scripts e o bruto
