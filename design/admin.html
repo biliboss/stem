@@ -1,0 +1,140 @@
+<!doctype html>
+<!-- PROTOTYPE of /_stem, the admin every app is born with: what an EMPTY app shows after `stem new`.
+     Static HTML in the kernel's world (Mona Sans, neutral ground, ink, one blue, hairlines, no filled boxes).
+     It is a picture of the design, not the code: the kernel does not serve /_stem yet. -->
+<html lang="en" data-theme="kernel">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hello_world · stem</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans@5/index.css" rel="stylesheet">
+<style>
+  :root { --base-100: oklch(98.6% .002 247); --base-200: oklch(96.3% .003 247); --base-300: oklch(91.2% .005 247);
+    --ink: oklch(21% .012 257); --muted: oklch(21% .012 257 / .6); --faint: oklch(21% .012 257 / .42);
+    --primary: oklch(35% .075 258); --success: oklch(50% .08 155); --radius: .5rem;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; background: var(--base-100); color: var(--ink);
+    font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  code, .mono { font-family: var(--mono); font-size: .8125rem; }
+
+  header { display: flex; align-items: center; gap: 1rem; padding: 1rem 2rem; border-bottom: 1px solid var(--base-300); }
+  .mark { width: 1.375rem; height: 1.375rem; border-radius: .375rem; background: var(--ink); display: grid; place-items: center; }
+  .mark::after { content: ""; width: .375rem; height: .75rem; border-radius: 1rem; background: var(--base-100); transform: translateY(1px); }
+  .name { font-weight: 640; letter-spacing: -.01em; }
+  .facts { display: flex; gap: 1.25rem; color: var(--muted); font-size: .8125rem; }
+  .facts span { display: inline-flex; align-items: center; gap: .375rem; }
+  .dot { width: .4375rem; height: .4375rem; border-radius: 1rem; background: var(--success); }
+  nav { margin-left: auto; display: flex; gap: .25rem; font-size: .875rem; }
+  nav a { padding: .375rem .625rem; border-radius: .375rem; color: var(--muted); text-decoration: none; }
+  nav a[aria-current] { color: var(--ink); background: var(--base-200); font-weight: 560; }
+
+  main { max-width: 68rem; margin: 0 auto; padding: 3.5rem 2rem 4rem; }
+  h1 { font-size: 2.5rem; font-weight: 640; line-height: 1.1; letter-spacing: -.025em; }
+  .lede { margin-top: .75rem; max-width: 36rem; font-size: 1.0625rem; color: var(--muted); }
+
+  .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; }
+  .door h2 { display: flex; align-items: baseline; gap: .5rem; font-size: 1.125rem; font-weight: 620; letter-spacing: -.005em; }
+  .count { font-size: .8125rem; font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .door .rule { margin-top: .75rem; border-top: 1px solid var(--base-300); }
+  .empty { padding: 1.25rem 0 0; color: var(--muted); font-size: .9375rem; max-width: 26rem; }
+  .ask { margin-top: .875rem; padding: .75rem .875rem; border-radius: var(--radius); background: var(--base-100);
+    box-shadow: 0 0 0 1px var(--base-300), 0 8px 22px -16px oklch(21% .012 257 / .35); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ask b { color: var(--ink); font-weight: 700; }
+  .ask .slot { color: var(--ink); font-weight: 600; text-decoration: underline dashed oklch(35% .075 258 / .7); text-decoration-thickness: 1.5px; text-underline-offset: .3em; }
+
+  .memory { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 3.5rem; border-top: 1px solid var(--base-300); border-bottom: 1px solid var(--base-300); }
+  .memory div { padding: 1.125rem 0 1.125rem 1.25rem; }
+  .memory div + div { border-left: 1px solid var(--base-300); }
+  .memory div:first-child { padding-left: 0; }
+  .memory strong { display: block; font-size: 1.75rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .memory span { display: block; margin-top: .5rem; font-size: .8125rem; color: var(--muted); }
+
+  .below { display: grid; grid-template-columns: 1fr 20rem; gap: 3rem; margin-top: 3rem; }
+  .below h2 { font-size: 1.125rem; font-weight: 620; }
+  .log { margin-top: .75rem; border-top: 1px solid var(--base-300); }
+  .log p { padding-top: 1.25rem; color: var(--muted); font-size: .9375rem; max-width: 30rem; }
+  .legend { display: flex; gap: 1rem; margin-top: 1rem; font-size: .8125rem; color: var(--faint); }
+  .legend i { display: inline-block; width: .5rem; height: .5rem; border-radius: 1rem; margin-right: .375rem; vertical-align: .05em; }
+  .aside { font-size: .875rem; color: var(--muted); }
+  .aside code { display: block; margin-top: .625rem; padding: .625rem .75rem; border-radius: var(--radius); background: var(--base-200);
+    color: oklch(21% .012 257 / .78); font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  footer { max-width: 68rem; margin: 0 auto; padding: 0 2rem 2.5rem; display: flex; gap: 1.25rem; font-size: .8125rem; color: var(--faint); }
+  kbd { font-family: inherit; font-size: .75rem; padding: .0625rem .375rem; border-radius: .25rem; border: 1px solid var(--base-300);
+    border-bottom-width: 2px; color: var(--muted); background: var(--base-100); margin-right: .25rem; }
+  @media (max-width: 52rem) {
+    header { flex-wrap: wrap; padding: .875rem 1.25rem; gap: .75rem; }
+    .facts { flex-wrap: wrap; gap: .25rem .875rem; width: 100%; order: 3; }
+    nav { margin-left: 0; width: 100%; order: 4; overflow-x: auto; }
+    main { padding: 2.25rem 1.25rem 3rem; }
+    h1 { font-size: 2rem; }
+    .doors, .below { grid-template-columns: 1fr; gap: 2.25rem; }
+    .memory { grid-template-columns: repeat(2, 1fr); }
+    .memory div { padding-left: 0 !important; border-left: 0 !important; border-top: 1px solid var(--base-300); }
+    .memory div:nth-child(-n+2) { border-top: 0; }
+    footer { padding: 0 1.25rem 2rem; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="mark" aria-hidden="true"></span>
+  <span class="name">hello_world</span>
+  <div class="facts">
+    <span><i class="dot"></i>agent idle</span>
+    <span class="mono">localhost:5330</span>
+    <span>claude-agent-acp · personal</span>
+    <span>rocksdb</span>
+  </div>
+  <nav aria-label="stem">
+    <a aria-current="page" href="#">Overview</a><a href="#">Screens</a><a href="#">API</a><a href="#">Memory</a><a href="#">Agent</a>
+  </nav>
+</header>
+
+<main>
+  <h1>hello_world is empty.</h1>
+  <p class="lede">It knows nothing yet, and that is the starting point. Tell it what a route is, and the built-in agent builds it.</p>
+
+  <div class="doors">
+    <section class="door">
+      <h2>Screens <span class="count">0</span></h2>
+      <div class="rule"></div>
+      <p class="empty">Every route outside <code>/api</code> is a screen. Type one in the address bar, with a prompt:</p>
+      <div class="ask mono">localhost:5330/customers?_meta=<span class="slot">customer list with search</span></div>
+    </section>
+    <section class="door">
+      <h2>API <span class="count">0</span></h2>
+      <div class="rule"></div>
+      <p class="empty">Every route under <code>/api</code> is an endpoint. Call it, and the first call defines it:</p>
+      <div class="ask mono"><b>POST</b> localhost:5330/api/customers
+<span class="slot">{ "name": "Ana" }</span></div>
+    </section>
+  </div>
+
+  <div class="memory" aria-label="memory">
+    <div><strong>0</strong><span>programs</span></div>
+    <div><strong>0</strong><span>teachings</span></div>
+    <div><strong>0</strong><span>tables</span></div>
+    <div><strong>0</strong><span>agent runs</span></div>
+    <div><strong>$0.00</strong><span>spent on the model</span></div>
+  </div>
+
+  <div class="below">
+    <section>
+      <h2>Activity</h2>
+      <div class="log">
+        <p>Every request lands here, with who answered it and what it cost. Nothing has arrived yet.</p>
+        <div class="legend"><span><i style="background:oklch(21% .012 257 / .3)"></i>cache</span><span><i style="background:oklch(50% .08 155)"></i>program</span><span><i style="background:oklch(35% .075 258)"></i>agent</span></div>
+      </div>
+    </section>
+    <aside class="aside">
+      <h2 style="font-size:1.125rem;font-weight:620;color:var(--ink)">Let another agent build it</h2>
+      <p style="margin-top:.75rem">Register this app's MCP, and any agent can shape screens and teach endpoints.</p>
+      <code>claude mcp add --transport http --scope local system http://localhost:5330/_mcp</code>
+    </aside>
+  </div>
+</main>
+
+<footer><span><kbd>?</kbd>shortcuts</span><span><kbd>g</kbd><kbd>d</kbd>design system</span><span><kbd>g</kbd><kbd>h</kbd>your home</span></footer>
+</body>
+</html>
