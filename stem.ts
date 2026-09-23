@@ -133,7 +133,21 @@ body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; 
 .kernel-heading { font-size: 1.125rem; line-height: 1.3; font-weight: 620; letter-spacing: -0.005em; text-wrap: balance; }
 .kernel-figure { font-size: 2rem; line-height: 1; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .kernel-section + .kernel-section { margin-top: .5rem; }
-.kernel-blank { min-height: 100svh; display: grid; place-content: center; gap: 1.25rem; padding: 2rem; text-align: left; }
+.kernel-blank { min-height: 100svh; display: grid; place-content: center; gap: 2.25rem; padding: 2rem; text-align: left;
+  width: min(44rem, 100%); margin-inline: auto; grid-template-columns: minmax(0, 1fr); }
+.kernel-blank-group { display: grid; gap: .625rem; min-width: 0; }
+.kernel-blank header.kernel-blank-group { gap: .875rem; }
+.kernel-blank-lede { max-width: 38ch; font-size: 1.0625rem; line-height: 1.5; text-wrap: pretty;
+  color: color-mix(in oklch, var(--color-base-content) 66%, transparent); }
+.kernel-blank-label { font-size: .875rem; font-weight: 500; color: color-mix(in oklch, var(--color-base-content) 72%, transparent); }
+/* The main door, drawn as the address bar it is typed into: the origin is fixed, the declaration is the slot. */
+.kernel-address { margin: 0; padding: .875rem 1rem; border-radius: var(--radius-box); white-space: pre-wrap; overflow-wrap: anywhere;
+  font-size: .9375rem; line-height: 1.5; background: var(--color-base-100); color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  box-shadow: 0 0 0 1px var(--color-base-300), 0 10px 28px -18px oklch(21% .012 257 / .35); }
+.kernel-slot { color: var(--color-base-content); font-weight: 600; text-decoration: underline dashed color-mix(in oklch, var(--color-primary) 70%, transparent);
+  text-decoration-thickness: 1.5px; text-underline-offset: .3em; }
+.kernel-blank-aside .kernel-blank-label { font-weight: 450; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
+.kernel-blank-aside .kernel-mcp { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .75rem; color: color-mix(in oklch, var(--color-base-content) 64%, transparent); }
 .kernel-hint { display: flex; align-items: center; gap: .375rem; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
 .kernel-hint span { margin-left: .375rem; }
 .kernel-blank .kernel-hint + .kernel-hint { margin-top: -.5rem; font-size: .875rem; }
@@ -746,11 +760,17 @@ export namespace View {
       /** The screen has no way in: it TEACHES the query that declares an address, typed by the owner in the
        *  address bar, and the MCP as the second door. Text only — no link, form or fetch carries `_meta`. */
       Blank: ((p) => h("main", { class: "kernel-blank" },
-          h("h1", { class: "kernel-display" }, escape(String(p.title ?? ""))),
-          h("p", { class: "kernel-hint" }, escape(String(p.hint ?? ""))),
-          h("pre", { class: "kernel-mcp" }, h("code", null, "GET ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/?_meta=o que esta tela \u00E9")),
-          h("p", { class: "kernel-hint" }, "Ou pela porta do MCP:"),
-          h("pre", { class: "kernel-mcp" }, h("code", null, "claude mcp add --transport http --scope local system ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/_mcp")),
+          h("header", { class: "kernel-blank-group" },
+              h("h1", { class: "kernel-display" }, escape(String(p.title ?? ""))),
+              h("p", { class: "kernel-blank-lede" }, escape(String(p.hint ?? "")))),
+          h("div", { class: "kernel-blank-group" },
+              h("p", { class: "kernel-blank-label" }, "Na barra do navegador:"),
+              h("pre", { class: "kernel-address" }, h("code", null,
+                  h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/?_meta=",
+                  h("span", { class: "kernel-slot" }, "uma lista de tarefas com prazo")))),
+          h("div", { class: "kernel-blank-group kernel-blank-aside" },
+              h("p", { class: "kernel-blank-label" }, "Ou deixe um agente fazer, pela porta do MCP:"),
+              h("pre", { class: "kernel-mcp" }, h("code", null, "claude mcp add --transport http --scope local system ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/_mcp"))),
           h("p", { class: "kernel-hint" },
               h("kbd", { class: "kbd" }, "g"),
               h("kbd", { class: "kbd" }, "d"),
@@ -1173,7 +1193,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
     title: "em branco",
     root: "blank",
     elements: {
-      blank: { type: "Blank", props: { title: "Em branco.", hint: "Diga o que um endere\u00E7o \u00E9, e ele passa a existir: na barra do navegador," } },
+      blank: { type: "Blank", props: { title: "Em branco.", hint: "Este sistema ainda n\u00E3o sabe nada. Um endere\u00E7o passa a existir quando algu\u00E9m diz o que ele \u00E9." } },
     },
   };
 
