@@ -1,5 +1,5 @@
 ---
-title: Estado da arte
+title: Prior art
 description: "Prior art: backend with no routes that learns"
 ---
 

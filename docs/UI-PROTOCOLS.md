@@ -1,5 +1,5 @@
 ---
-title: Protocolos de UI
+title: UI protocols
 description: "UI-PROTOCOLS — generative UI, e o que copiar para o nosso DSL"
 ---
 

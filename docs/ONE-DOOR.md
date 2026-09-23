@@ -1,5 +1,5 @@
 ---
-title: A porta, medida
+title: The door, measured
 description: "apps/stem — a porta, e a casca que ela devolve no milissegundo 0"
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Experimentos
+title: Experiments
 description: "apps/stem — experimentos"
 ---
 

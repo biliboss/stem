@@ -1,5 +1,5 @@
 ---
-title: O mundo
+title: The world
 description: "O mundo do Stem: primitivas, eventos e o laboratório"
 ---
 

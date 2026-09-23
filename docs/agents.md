@@ -1,5 +1,5 @@
 ---
-title: Os dois agentes
+title: The two agents
 description: "Os dois agentes do Stem, e por que o pi não entra por ACP"
 ---
 
