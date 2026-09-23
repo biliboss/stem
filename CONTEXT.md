@@ -140,6 +140,7 @@ outra rota     capability estática → program promovido (20 ms) → learning �
 - **`allowedTools` desliga o `canUseTool`** (`CLAUDE_SDK_CAN_USE_TOOL_SHADOWED`): o `requestPermission` do cliente não vê essas chamadas. A gravação de tool call mora dentro do `/_mcp`.
 - **`settingSources: []` na sessão do runtime**, senão o output style do dono vaza para o JSON.
 - **`fetch` levava 403 da admin do Caddy sob Node** (undici manda `sec-fetch-mode: cors`). Sob Bun 1.3.9 o mesmo GET por `fetch` deu 200 em 14/09, e é por isso que `Caddy.admin` usa `fetch`: voltar para Node devolve o 403.
+- **O motor é RocksDB desde 23/09**, o de produção do SurrealDB: sistema novo nasce em `.system/system.rocksdb`. Quem já tem `system.skv` continua em surrealkv (`Memory.address`), porque o mesmo caminho noutro motor abre VAZIO. O via-app de produção e o `stem::self` passam `--db surrealkv://…` explícito e não mudaram: migrar os dados deles é outra decisão. Um script que abre o RocksDB e não chama `process.exit` fica pendurado — o banco aberto segura o Bun.
 - **SurrealDB:** `ORDER BY` exige o campo no SELECT; tabela inexistente é erro, não lista vazia; record id volta como `"table:id"`.
 - **`changed` chega depois de `idle`:** a view é salva depois do turno do agente, então a página recarrega no `changed` quando já não há trabalho.
 - **Experimento roda em sistema próprio**, nunca no app que o dono está usando: a H3 criou e concluiu tarefas no `tarefas` de verdade.

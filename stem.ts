@@ -1783,14 +1783,15 @@ export class Memory {
   static async open(url: string) {
     // import(), not a static import: Storybook loads this file in a browser, where the native engine cannot exist.
     const { createNodeEngines } = await import("@surrealdb/node");
-    if (url.startsWith("surrealkv://")) {
+    const disk = /^(surrealkv|rocksdb):\/\//.exec(url);
+    if (disk) {
       const { mkdirSync } = process.getBuiltinModule("node:fs");
-      mkdirSync(process.getBuiltinModule("node:path").dirname(url.slice("surrealkv://".length)), { recursive: true });
+      mkdirSync(process.getBuiltinModule("node:path").dirname(url.slice(disk[0].length)), { recursive: true });
     }
     const db = new Surreal({ engines: createNodeEngines() });
     await db.connect(url);
     await db.use({ namespace: "backend", database: "backend" });
-    // A SELECT on a table that does not exist yet is an ERROR in surrealkv, not an empty list.
+    // A SELECT on a table that does not exist yet is an ERROR, not an empty list (surrealkv and rocksdb alike).
     await db.query(["operation", "execution", "learning", "capability", "teaching", "view", "theme", "preference", "acceptance", "program", "design_phase"].map((t) => `DEFINE TABLE IF NOT EXISTS ${t} SCHEMALESS;`).join(" "));
     return new Memory(db);
   }
@@ -2133,9 +2134,15 @@ export namespace Memory {
    * The one place that decides where a system's rows live. Every system has its own embedded SurrealDB, never a
    * shared server: --db wins, --new is `.system/` in the current directory, and otherwise the framework's `.run/`.
    * When `serve <app>.ts` reads the app, its store is born beside that file, and this is the line that changes.
+   *
+   * A new system is born on RocksDB, SurrealDB's production engine. A system that already has its `.skv` keeps
+   * opening it on surrealkv: the same path under another engine would come up EMPTY, and that reads as lost data.
    */
   export function address(o: { db?: string; fresh: boolean; cwd: string }) {
-    return o.db ?? `surrealkv://${o.fresh ? `${o.cwd}/.system/system.skv` : `${import.meta.dirname}/.run/backend.skv`}`;
+    if (o.db) return o.db;
+    const [dir, name] = o.fresh ? [`${o.cwd}/.system`, "system"] : [`${import.meta.dirname}/.run`, "backend"];
+    const legacy = `${dir}/${name}.skv`;
+    return process.getBuiltinModule("node:fs").existsSync(legacy) ? `surrealkv://${legacy}` : `rocksdb://${dir}/${name}.rocksdb`;
   }
 
   /** RecordId and friends stringify as objects; a record id on the wire is "table:id". */
