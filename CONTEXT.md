@@ -85,7 +85,7 @@ POST /qualquer-coisa {data:{…}}                      404 — `declare: POST /q
 tanto o que o dono começa quanto o que o agente ACP executa ao vivo na tela.** Duas portas para o mesmo gesto é
 onde as duas divergem; o que sobra na tela é leitura — a dobra, a régua, o rascunho e o dock do agente.
 
-Ficam só dois toques: `g d` abre o design system e `o` contorna as componentes. Nenhum dos dois muda o sistema.
+Os toques que sobram (`g h`, `g d`, `o`, `a`) ficam listados no `?`, um `<dialog>` que a Shell põe em TODA página, e é a tela em branco que ensina esse `?`. A lista mora em `View.KEYS`, e o `meta.spec.ts` recusa uma tecla que o kernel escute e a lista não tenha. Nenhum toque muda o sistema.
 
 - A tela em branco ENSINA primeiro `GET <origem>/?_meta=o que esta tela é`, a query que o dono digita na barra do navegador, e o MCP (`claude mcp add … <origem>/_mcp`) depois, como segunda porta; o `<origem>` se preenche no cliente com o `location.origin`. Até 23/09 ela ensinava só o MCP. O dono inverteu a ordem porque a barra de endereço é a porta que ele usa primeiro. É TEXTO, e o `meta.spec.ts` recusa qualquer href, action, src ou fetch com `_meta` na Shell.
 - A dobra que espera vira instrução, não campo: `gate {path, continue | revise}` pelo MCP.

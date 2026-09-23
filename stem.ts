@@ -140,6 +140,30 @@ body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; 
 .kernel-blank-lede { max-width: 38ch; font-size: 1.0625rem; line-height: 1.5; text-wrap: pretty;
   color: color-mix(in oklch, var(--color-base-content) 66%, transparent); }
 .kernel-blank-label { font-size: .875rem; font-weight: 500; color: color-mix(in oklch, var(--color-base-content) 72%, transparent); }
+/* The \`?\` dialog: a vim :help card. Keys in a fixed column so the eye runs down the actions, not the glyphs. */
+.kernel-keys { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(30rem, calc(100vw - 2rem)); max-height: calc(100svh - 4rem); padding: 1.5rem 1.5rem 1.25rem; border: 0;
+  border-radius: var(--radius-box); background: var(--color-base-100); color: var(--color-base-content);
+  box-shadow: 0 0 0 1px var(--color-base-300), 0 28px 60px -24px oklch(21% .012 257 / .45); }
+.kernel-keys[open] { animation: kernel-keys-in .22s cubic-bezier(.16, 1, .3, 1) both; }
+.kernel-keys::backdrop { background: oklch(21% .012 257 / .28); backdrop-filter: blur(3px); }
+@keyframes kernel-keys-in { from { opacity: 0; transform: translateY(.5rem) scale(.985); filter: blur(4px); } }
+@media (prefers-reduced-motion: reduce) { .kernel-keys[open] { animation: none; } }
+.kernel-keys header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.kernel-keys h2 { font-size: 1.125rem; font-weight: 640; letter-spacing: -0.01em; }
+.kernel-keys-close { cursor: pointer; border-radius: .375rem; }
+.kernel-keys-close:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.kernel-keys section + section { margin-top: 1.125rem; padding-top: 1rem; border-top: 1px solid var(--color-base-300); }
+.kernel-keys h3 { margin-bottom: .5rem; font-size: .75rem; font-weight: 600; color: color-mix(in oklch, var(--color-base-content) 58%, transparent); }
+.kernel-keys dl { display: grid; gap: .5rem; }
+.kernel-keys dl > div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: 1rem; }
+.kernel-keys:focus { outline: none; }
+@media (max-width: 30rem) { .kernel-keys { padding: 1.25rem 1.125rem 1rem; } .kernel-keys dl > div { grid-template-columns: 6.25rem minmax(0, 1fr); gap: .75rem; } }
+/* A phone has no ? to press: the hint that teaches it would be a promise the device cannot keep. */
+@media (hover: none) and (pointer: coarse) { .kernel-blank .kernel-hint { display: none; } }
+.kernel-keys dt { display: flex; align-items: center; gap: .375rem; }
+.kernel-keys dd { font-size: .9375rem; line-height: 1.4; color: color-mix(in oklch, var(--color-base-content) 82%, transparent); }
+.kernel-keys .kbd { min-width: 1.75rem; font-size: .8125rem; }
+.kernel-keys-then { font-size: .6875rem; color: color-mix(in oklch, var(--color-base-content) 50%, transparent); }
 /* The main door, drawn as the address bar it is typed into: the origin is fixed, the declaration is the slot. */
 .kernel-address { margin: 0; padding: .875rem 1rem; border-radius: var(--radius-box); white-space: pre-wrap; overflow-wrap: anywhere;
   font-size: .9375rem; line-height: 1.5; background: var(--color-base-100); color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
@@ -771,11 +795,7 @@ export namespace View {
           h("div", { class: "kernel-blank-group kernel-blank-aside" },
               h("p", { class: "kernel-blank-label" }, "Ou deixe um agente fazer, pela porta do MCP:"),
               h("pre", { class: "kernel-mcp" }, h("code", null, "claude mcp add --transport http --scope local system ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/_mcp"))),
-          h("p", { class: "kernel-hint" },
-              h("kbd", { class: "kbd" }, "g"),
-              h("kbd", { class: "kbd" }, "d"),
-              " ",
-              h("span", null, "o design system")))) as Render,
+          h("p", { class: "kernel-hint" }, h("kbd", { class: "kbd" }, "?"), h("span", null, "os atalhos")))) as Render,
       /** Kernel-only: the tokens of the current theme, read live from the CSS variables. */
       Swatches: ((p) => h("div", { class: "grid grid-cols-2 sm:grid-cols-4 gap-4" }, (p.tokens as string[]).map((t) => h("div", { class: "flex flex-col gap-2" },
           h("span", { class: "h-14 rounded-box border border-base-300", style: `background: var(${t})` }),
@@ -974,6 +994,7 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
                       h("blockquote", { id: "kernel-narration-text" }),
                       h("p", { class: "kernel-gate-note" }, "responda pelo MCP: gate {path, continue | revise}"))),
               h("script", { type: "module" }, Kernel.js),
+              View.keysDialog(),
               h("div", { id: "working" }),
               h("div", { id: "agent" },
                   h("div", { id: "agent-card" },
@@ -1143,6 +1164,14 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
               if (e.key === 'h' && location.pathname !== '/') location.assign('/');
             }
           });
+          // \`?\` opens the one place that lists every key; Esc closes it, because it is a native <dialog>.
+          const keys = document.getElementById('kernel-keys');
+          document.addEventListener('keydown', (e) => {
+            if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input, textarea, select, [contenteditable]')) return;
+            e.preventDefault();
+            if (keys.open) keys.close(); else { keys.showModal(); keys.focus(); }
+          });
+          keys.addEventListener('click', (e) => { if (e.target === keys) keys.close(); });
           // No way in from here: ⌘K, the feedback dialog and edit mode are gone, and every gesture arrives by MCP —
           // both the ones the owner starts and the ones the ACP agent plays out live on this screen.
                     const samePath = (p) => { const a = p.split('/'), b = location.pathname.split('/'); return a.length === b.length && a.every((seg, k) => seg.startsWith('{') || seg === b[k]); };
@@ -1186,6 +1215,33 @@ tone: primary|secondary|accent|neutral|ghost|error|success|warning. After any ac
         `)))
     );
   }
+
+  /** Every key the kernel answers, in the one list the \`?\` dialog reads. A new key is a new row here, or it is invisible. */
+  export const KEYS: { group: string; keys: { seq: string[]; what: string }[] }[] = [
+    { group: "Navegar", keys: [
+      { seq: ["g", "h"], what: "ir para o in\u00EDcio" },
+      { seq: ["g", "d"], what: "abrir o design system" },
+      { seq: ["Esc"], what: "voltar, de dentro do design system" },
+    ] },
+    { group: "Ver", keys: [
+      { seq: ["o"], what: "contornar os componentes, com o nome de cada um" },
+      { seq: ["a"], what: "o agente: resumo ou o log de ferramentas" },
+    ] },
+    { group: "Ajuda", keys: [
+      { seq: ["?"], what: "esta lista" },
+    ] },
+  ];
+
+  /** The \`?\` dialog: a native <dialog>, so focus, Esc and the backdrop come from the browser, not from us. */
+  export const keysDialog = (): string => h("dialog", { id: "kernel-keys", class: "kernel-keys", "aria-labelledby": "kernel-keys-title", tabindex: "-1", autofocus: true },
+      h("header", null,
+          h("h2", { id: "kernel-keys-title" }, "Atalhos"),
+          h("form", { method: "dialog" }, h("button", { class: "kernel-keys-close", "aria-label": "fechar" }, h("kbd", { class: "kbd" }, "Esc")))),
+      KEYS.map((g) => h("section", null,
+          h("h3", null, g.group),
+          h("dl", null, g.keys.map((k) => h("div", null,
+              h("dt", null, k.seq.map((key, i) => [i > 0 ? h("span", { class: "kernel-keys-then" }, "depois") : "", h("kbd", { class: "kbd" }, escape(key))])),
+              h("dd", null, escape(k.what)))))))) as string;
 
   /** The one view the binary ships: what a system with no knowledge shows. */
   export const BOOTSTRAP: Spec = {
