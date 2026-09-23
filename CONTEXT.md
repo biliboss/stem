@@ -87,7 +87,7 @@ onde as duas divergem; o que sobra na tela é leitura — a dobra, a régua, o r
 
 Os toques que sobram (`g h`, `g d`, `o`, `a`) ficam listados no `?`, um `<dialog>` que a Shell põe em TODA página, e é a tela em branco que ensina esse `?`. A lista mora em `View.KEYS`, e o `meta.spec.ts` recusa uma tecla que o kernel escute e a lista não tenha. Nenhum toque muda o sistema.
 
-- A tela em branco ENSINA primeiro `GET <origem>/?_meta=o que esta tela é`, a query que o dono digita na barra do navegador, e o MCP (`claude mcp add … <origem>/_mcp`) depois, como segunda porta; o `<origem>` se preenche no cliente com o `location.origin`. Até 23/09 ela ensinava só o MCP. O dono inverteu a ordem porque a barra de endereço é a porta que ele usa primeiro. É TEXTO, e o `meta.spec.ts` recusa qualquer href, action, src ou fetch com `_meta` na Shell.
+- A tela em branco ENSINA primeiro as duas declarações por HTTP — `GET <origem>/?_meta=…` para uma tela, digitada na barra do navegador, e `POST <origem>/api/todo {"_meta": …, "data": {…}}` para uma API, com a nota de que o mesmo POST sem `_meta` responde depois — e o MCP (`claude mcp add … <origem>/_mcp`) depois, como segunda porta; o `<origem>` se preenche no cliente com o `location.origin`. Até 23/09 ela ensinava só o MCP. O dono inverteu a ordem porque a barra de endereço é a porta que ele usa primeiro. É TEXTO, e o `meta.spec.ts` recusa qualquer href, action, src ou fetch com `_meta` na Shell.
 - A dobra que espera vira instrução, não campo: `gate {path, continue | revise}` pelo MCP.
 - O SSE, o `develop()` e o `paintDraft()` ficam inteiros: é por eles que o agente desenha ao vivo.
 

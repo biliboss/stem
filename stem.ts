@@ -170,6 +170,9 @@ body { font-family: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif; 
   box-shadow: 0 0 0 1px var(--color-base-300), 0 10px 28px -18px oklch(21% .012 257 / .35); }
 .kernel-slot { color: var(--color-base-content); font-weight: 600; text-decoration: underline dashed color-mix(in oklch, var(--color-primary) 70%, transparent);
   text-decoration-thickness: 1.5px; text-underline-offset: .3em; }
+.kernel-verb { font-weight: 700; color: var(--color-base-content); }
+.kernel-blank-note { max-width: 60ch; font-size: .8125rem; line-height: 1.5; text-wrap: pretty; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
+.kernel-blank-note code { font-size: .92em; }
 .kernel-blank-aside .kernel-blank-label { font-weight: 450; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
 .kernel-blank-aside .kernel-mcp { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .75rem; color: color-mix(in oklch, var(--color-base-content) 64%, transparent); }
 .kernel-hint { display: flex; align-items: center; gap: .375rem; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
@@ -788,10 +791,18 @@ export namespace View {
               h("h1", { class: "kernel-display" }, escape(String(p.title ?? ""))),
               h("p", { class: "kernel-blank-lede" }, escape(String(p.hint ?? "")))),
           h("div", { class: "kernel-blank-group" },
-              h("p", { class: "kernel-blank-label" }, "Na barra do navegador:"),
+              h("p", { class: "kernel-blank-label" }, "Uma tela, na barra do navegador:"),
               h("pre", { class: "kernel-address" }, h("code", null,
                   h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/?_meta=",
                   h("span", { class: "kernel-slot" }, "uma lista de tarefas com prazo")))),
+          h("div", { class: "kernel-blank-group" },
+              h("p", { class: "kernel-blank-label" }, "Uma API, por HTTP:"),
+              h("pre", { class: "kernel-address" }, h("code", null,
+                  h("b", { class: "kernel-verb" }, "POST"), " ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/api/todo\n",
+                  "{\n  \"_meta\": \"", h("span", { class: "kernel-slot" }, "cria uma tarefa"), "\",\n",
+                  "  \"data\": {\n    \"name\": \"Comprar p\u00E3o\",\n    \"description\": \"na padaria\"\n  }\n}")),
+              h("p", { class: "kernel-blank-note" }, "A rota nasce da declara\u00E7\u00E3o: o agente escreve o backend, e o mesmo POST, sem ",
+                  h("code", null, "_meta"), ", passa a responder sozinho.")),
           h("div", { class: "kernel-blank-group kernel-blank-aside" },
               h("p", { class: "kernel-blank-label" }, "Ou deixe um agente fazer, pela porta do MCP:"),
               h("pre", { class: "kernel-mcp" }, h("code", null, "claude mcp add --transport http --scope local system ", h("span", { class: "kernel-origin" }, "&lt;origem&gt;"), "/_mcp"))),
