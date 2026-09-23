@@ -59,6 +59,7 @@
   .aside { font-size: .875rem; color: var(--muted); }
   .aside code { display: block; margin-top: .625rem; padding: .625rem .75rem; border-radius: var(--radius); background: var(--base-200);
     color: oklch(21% .012 257 / .78); font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .installed { display: flex; align-items: center; gap: .5rem; margin-top: .75rem; color: var(--ink); font-weight: 520; }
   footer { max-width: 68rem; margin: 0 auto; padding: 0 2rem 2.5rem; display: flex; gap: 1.25rem; font-size: .8125rem; color: var(--faint); }
   kbd { font-family: inherit; font-size: .75rem; padding: .0625rem .375rem; border-radius: .25rem; border: 1px solid var(--base-300);
     border-bottom-width: 2px; color: var(--muted); background: var(--base-100); margin-right: .25rem; }
@@ -128,9 +129,11 @@
       </div>
     </section>
     <aside class="aside">
-      <h2 style="font-size:1.125rem;font-weight:620;color:var(--ink)">Let another agent build it</h2>
-      <p style="margin-top:.75rem">Register this app's MCP, and any agent can shape screens and teach endpoints.</p>
-      <code>claude mcp add --transport http --scope local system http://localhost:5330/_mcp</code>
+      <h2 style="font-size:1.125rem;font-weight:620;color:var(--ink)">Agents</h2>
+      <p class="installed"><i class="dot"></i>Skill installed globally</p>
+      <code>~/.claude/skills/hello_world → hello_world/</code>
+      <p style="margin-top:1rem">Any agent on this machine can operate hello_world. Ask it:</p>
+      <code>claude "add a customers screen to hello_world"</code>
     </aside>
   </div>
 </main>
