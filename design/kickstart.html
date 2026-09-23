@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- PROTOTYPE of the kickstart: what /_stem shows while an app is empty. A guided flow instead of a blank page:
-     what (1) → why (2) → how, as the agent understood it (3) → options of the component (4) → the result (5).
+     what (1) → why (2) → the plan (3) → options of the component (4) → the result (5) → /_stem after it (6):
+     the screens and endpoints it has, what it learned, and how to grow it.
      Every state is a URL (?step=1…5), so each one can be photographed for the docs. Static HTML in the kernel's
      world; the kernel does not serve it yet. -->
 <html lang="en" data-theme="kernel">
@@ -34,6 +35,11 @@
   main { max-width: 52rem; margin: 0 auto; padding: 3rem 2rem 4rem; }
   .rail { display: flex; gap: .375rem; margin-bottom: 2.5rem; }
   .rail li { list-style: none; flex: 1; }
+  .rail a { display: block; text-decoration: none; }
+  .back { display: inline-flex; gap: .375rem; margin-bottom: 1rem; font-size: .8125rem; color: var(--muted); text-decoration: none; }
+  .back:hover { color: var(--ink); }
+  .keys { margin-left: .75rem; font-size: .75rem; color: var(--faint); }
+  .keys kbd { font-family: inherit; font-size: .6875rem; padding: 0 .3125rem; border-radius: .25rem; border: 1px solid var(--base-300); border-bottom-width: 2px; }
   .rail span { display: block; height: 3px; border-radius: 2px; background: var(--base-300); }
   .rail li.done span { background: var(--ink); }
   .rail li.now span { background: var(--primary); }
@@ -108,12 +114,34 @@
   .log li span { color: var(--muted); display: block; }
   .log li b { font-weight: 560; }
 
-  section.step { display: none; } body[data-step="1"] #s1, body[data-step="2"] #s2, body[data-step="3"] #s3, body[data-step="4"] #s4, body[data-step="5"] #s5 { display: block; }
+  section.step { display: none; } body[data-step="1"] #s1, body[data-step="2"] #s2, body[data-step="3"] #s3, body[data-step="4"] #s4, body[data-step="5"] #s5, body[data-step="6"] #s6 { display: block; }
+  body[data-step="6"] .rail { display: none; }
+  .doors6 { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-top: 2.25rem; }
+  .doors6 h2, .grow-h { display: flex; align-items: baseline; gap: .5rem; font-size: 1.125rem; font-weight: 620; }
+  .grow-h { margin-top: 3rem; }
+  .count { font-size: .8125rem; font-weight: 500; color: var(--faint); }
+  .rows { margin-top: .75rem; padding: 0; border-top: 1px solid var(--base-300); }
+  .rows li { list-style: none; display: flex; align-items: center; gap: .875rem; padding: .875rem 0; border-bottom: 1px solid var(--base-300); }
+  .rows a { flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+  .rows a b { display: block; font-family: var(--mono); font-size: .875rem; font-weight: 600; }
+  .rows a span { display: block; font-size: .8125rem; color: var(--muted); }
+  .rows .verb { display: inline; font-size: .75rem; color: var(--primary); margin-right: .25rem; }
+  .rows em { font-style: normal; font-size: .75rem; color: var(--faint); white-space: nowrap; }
+  .pill { font-style: normal; font-size: .6875rem; font-weight: 600; padding: .125rem .5rem; border-radius: 1rem; }
+  .pill.view { background: oklch(21% .012 257 / .07); color: var(--muted); }
+  .pill.prog { background: oklch(50% .08 155 / .12); color: var(--success); }
+  .kind { display: block; margin-top: .5rem; font-style: normal; font-size: .75rem; color: var(--primary); }
+  .memory { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 2.25rem; border-top: 1px solid var(--base-300); border-bottom: 1px solid var(--base-300); }
+  .memory div { padding: 1rem 0 1rem 1.125rem; } .memory div + div { border-left: 1px solid var(--base-300); } .memory div:first-child { padding-left: 0; }
+  .memory strong { display: block; font-size: 1.5rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .memory span { display: block; margin-top: .375rem; font-size: .8125rem; color: var(--muted); }
   @media (max-width: 52rem) {
     header { flex-wrap: wrap; padding: .875rem 1.25rem; } .facts { width: 100%; order: 3; flex-wrap: wrap; gap: .25rem .875rem; } nav { display: none; }
     main { padding: 2rem 1.25rem 3rem; } h1 { font-size: 1.75rem; }
     .choices.three, .options, .result { grid-template-columns: 1fr; } .rail b { display: none; } .own { flex-direction: column; }
     .plan div { grid-template-columns: 1fr; gap: .25rem; }
+    .doors6 { grid-template-columns: 1fr; gap: 1.75rem; }
+    .memory { grid-template-columns: repeat(2, 1fr); } .memory div { padding-left: 0 !important; border-left: 0 !important; border-top: 1px solid var(--base-300); } .memory div:nth-child(-n+2) { border-top: 0; }
   }
 </style>
 </head>
@@ -121,10 +149,10 @@
 <header>
   <span class="mark" aria-hidden="true"></span><span class="name">hello_world</span>
   <div class="facts"><span><i class="dot" id="dot"></i><span id="status">agent idle</span></span><span class="mono">localhost:5330</span><span>claude-agent-acp · personal</span></div>
-  <nav aria-label="stem"><a aria-current="page" href="#">Kickstart</a><a href="#">Screens</a><a href="#">API</a><a href="#">Memory</a><a href="#">Agent</a></nav>
+  <nav aria-label="stem"><a aria-current="page" href="#" id="navfirst">Kickstart</a><a href="#">Screens</a><a href="#">API</a><a href="#">Memory</a><a href="#">Agent</a></nav>
 </header>
 <main>
-  <ol class="rail" id="rail"><li><span></span><b>What</b></li><li><span></span><b>Why</b></li><li><span></span><b>How</b></li><li><span></span><b>Pick</b></li><li><span></span><b>Done</b></li></ol>
+  <ol class="rail" id="rail" data-hide6><li><a href="?step=1"><span></span><b>What</b></a></li><li><a href="?step=2"><span></span><b>Why</b></a></li><li><a href="?step=3"><span></span><b>Plan</b></a></li><li><a href="?step=4"><span></span><b>Pick</b></a></li><li><a href="?step=5"><span></span><b>Done</b></a></li></ol>
 
   <section class="step" id="s1">
     <h1>What should hello_world do?</h1>
@@ -139,6 +167,7 @@
   </section>
 
   <section class="step" id="s2">
+    <a class="back" href="?step=1">← Back</a>
     <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span></div>
     <h1>Why do you want it?</h1>
     <p class="lede">What should be different once it exists? The answer decides what the screen puts first.</p>
@@ -148,10 +177,11 @@
       <button class="choice"><strong>My team doesn't know who does what</strong><small>Every task has an owner, and everyone sees it.</small></button>
     </div>
     <div class="own"><input placeholder="Or tell it why, in your words" aria-label="Why, in your words"><button class="btn">Continue</button></div>
-    <p class="hint">These three options come from your first answer.</p>
+    <p class="hint">These three options come from your first answer. <span class="keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> pick · <kbd>↵</kbd> continue</span></p>
   </section>
 
   <section class="step" id="s3">
+    <a class="back" href="?step=2">← Back</a>
     <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span><span>see what is late</span></div>
     <h1>Here is the plan.</h1>
     <p class="lede">Read it before anything is built. This is the cheapest moment to be wrong.</p>
@@ -164,6 +194,7 @@
   </section>
 
   <section class="step" id="s4">
+    <a class="back" href="?step=3">← Back</a>
     <div class="said"><span>Build an interface</span><span><b>I want to manage my to-do list</b></span><span>see what is late</span></div>
     <h1>Three ways to show your tasks.</h1>
     <p class="lede">Pick the one closest to how you think. You can switch later.</p>
@@ -186,7 +217,7 @@
         <div class="col"><h6>Done</h6><div class="card">Renew passport</div></div>
       </div></div><div class="cap"><strong>A board</strong><small>Columns you drag across. Better for steps.</small></div></button>
     </div>
-    <div class="actions"><button class="btn">Build this one</button><button class="btn ghost">Show me three more</button><span class="cost">three options cost $0.05</span></div>
+    <div class="actions"><button class="btn">Build this one</button><button class="btn ghost">Show me three more</button><span class="keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> pick</span><span class="cost">three options cost $0.05</span></div>
   </section>
 
   <section class="step" id="s5">
@@ -209,14 +240,43 @@
         <li><i style="background:var(--primary)"></i><div><b>The agent designed /tasks</b><span>2 phases · 48 s · $0.14</span></div></li>
         <li><i style="background:var(--success)"></i><div><b>Program for POST /api/tasks</b><span>written with the screen · answers in ~20 ms</span></div></li>
         <li><i style="background:oklch(21% .012 257 / .3)"></i><div><b>/tasks is cached</b><span>next visit ~3 ms, no model</span></div></li>
-      </ul><div class="actions" style="margin-top:1.25rem"><button class="btn">Open /tasks</button></div></div>
+      </ul><div class="actions" style="margin-top:1.25rem"><button class="btn">Open /tasks</button><a class="back" style="margin:0" href="?step=6">See your app →</a></div></div>
     </div>
+  </section>
+  <section class="step" id="s6">
+    <h1>hello_world</h1>
+    <p class="lede">One screen, one endpoint, and everything it learned. Grow it from here.</p>
+    <div class="doors6">
+      <section><h2>Screens <span class="count">1</span></h2>
+        <ul class="rows"><li><a href="#"><b>/tasks</b><span>Tasks, grouped by when</span></a><em>designed · 48 s</em><i class="pill view">view</i></li></ul>
+      </section>
+      <section><h2>API <span class="count">1</span></h2>
+        <ul class="rows"><li><a href="#"><b><span class="verb">POST</span> /api/tasks</b><span>add a task: title, due</span></a><em>2 calls · ~20 ms</em><i class="pill prog">program</i></li></ul>
+      </section>
+    </div>
+    <div class="memory"><div><strong>1</strong><span>program</span></div><div><strong>1</strong><span>teaching</span></div><div><strong>1</strong><span>table · task</span></div><div><strong>4</strong><span>agent runs</span></div><div><strong>$0.22</strong><span>spent on the model</span></div></div>
+    <h2 class="grow-h">Grow hello_world</h2>
+    <p class="lede" style="margin-top:.375rem">Ideas drawn from your plan. Each one starts a short kickstart that already knows your app.</p>
+    <div class="choices three" style="margin-top:1.25rem">
+      <button class="choice"><strong>Remind me of late tasks</strong><small>A morning message with what is late. <em class="kind">Automate a process</em></small></button>
+      <button class="choice"><strong>Share the list with my team</strong><small>Every task gets an owner. <em class="kind">Model my business</em></small></button>
+      <button class="choice"><strong>A "done this week" view</strong><small>What you finished, to close the week. <em class="kind">Build an interface</em></small></button>
+    </div>
+    <div class="own"><input placeholder="Or say what hello_world should do next" aria-label="Next, in your words"><button class="btn">Start</button></div>
   </section>
 </main>
 <script>
   const step = Number(new URLSearchParams(location.search).get("step") || 1);
   document.body.dataset.step = step;
   [...document.querySelectorAll("#rail li")].forEach((li, i) => li.className = i + 1 < step ? "done" : i + 1 === step ? "now" : "");
+  if (step === 6) document.getElementById("navfirst").textContent = "Overview";
+  // Keyboard: 1-3 pick an option on the step, Enter continues.
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input")) return;
+    const opts = [...document.querySelectorAll(`#s${step} .choice`)];
+    const i = Number(e.key) - 1;
+    if (opts[i]) { opts.forEach((o, k) => o.setAttribute("aria-pressed", String(k === i))); }
+  });
   if (step === 3 || step === 4) { document.getElementById("dot").classList.add("busy"); document.getElementById("status").textContent = "working"; }
 </script>
 </body>
