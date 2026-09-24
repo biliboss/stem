@@ -20,7 +20,7 @@ hand-kept `apps/via-landing-blog`.
 > lead, so we need to enhance the stem, in order to be able to do this."
 > — Gabriel, 24/09
 
-## Decisions (pending — the owner decides at the gate)
+## Decisions (24/09, the owner)
 
 ```
 reading      "stem > astro": Stem is the source, Astro is the output.

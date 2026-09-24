@@ -25,7 +25,7 @@ docs                              bili-docs /stem/: landing, 8 concepts, guides,
 
 ## Now
 
-**stem-astro** (`spec/26-09-24-stem-astro/`, #23) — requirements, waiting at the gate.
+**stem-astro** (`spec/26-09-24-stem-astro/`, #23) — approved 24/09, plan next.
 
 **The kickstart** (issue #22, worktree `stem-kickstart`). `/` of an empty app
 redirects to `/_stem`: what → why → plan → three layouts → the screen, then the
