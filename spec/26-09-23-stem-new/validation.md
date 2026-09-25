@@ -10,10 +10,11 @@ only proof that catches a path into this repo leaking into the package.
 
 ## The take
 
-Not measured, 25/09 (reviewer): `bunx github:biliboss/stem new todo --meta …`
-in a temp HOME exits 1, `error: could not determine executable to run for
-package`. `biliboss/stem` main is still `948641f` (16/09, `private: true`, no
-`bin`): plan 5.1–5.2 were never pushed, so no box below can be proven yet.
+Run 25/09 (reviewer), after pushing the split `2e2f04c` to `biliboss/stem`
+main, with its own HOME, cwd and TMPDIR; transcript in `take-25-09.txt`.
+The take FAILS: after the two questions and the folder, `serve` dies with
+`Cannot find module '@surrealdb/node'` — `stem.ts` imports it and the
+package's `dependencies` omit it (the mono supplies it from the root).
 
 ```
 export HOME=$(mktemp -d)                  no ~/.claude/skills, no ~/.stem
@@ -23,14 +24,20 @@ bunx github:biliboss/stem new todo --meta "a list of what I have to buy"
 
 - [ ] exactly three questions asked (app name came as the positional, so
       account and Caddy are asked; `what` came from --meta and is skipped)
+      — 25/09: account and Caddy asked, `what` skipped; left open because
+      the run died before `serve`
 - [ ] `todo/` holds `app.ts`, `SKILL.md`, `.system/system.rocksdb` —
-      nothing else
-- [ ] `$HOME/.claude/skills/todo` resolves to `todo/SKILL.md`
+      nothing else — 25/09: `.system/` empty, no `system.rocksdb`
+- [ ] `$HOME/.claude/skills/todo` resolves to `todo/SKILL.md` — 25/09: the
+      link resolves to the `todo/` folder, not the file; not measured end to end
 - [ ] the browser opens on `/_stem`, and the what step shows the --meta text
+      — not measured: the server never came up
 - [ ] no path under `~/src/biliboss-mono` appears in the output or the files
-      (`grep -r biliboss-mono todo/` → nothing)
+      (`grep -r biliboss-mono todo/` → nothing) — 25/09: grep exit 1 on the
+      files; the run is incomplete, so the box stays open
 - [ ] the terminal transcript and one capture of `/_stem` are attached to
       the PR; the capture is the only image, because only the eye judges it
+      — not measured: no `/_stem` to capture
 
 ## The gates
 

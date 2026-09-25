@@ -1,0 +1,12 @@
+$ export HOME=$(mktemp -d)   # /var/folders/wt/s7_0krps1yv31g3ldth3yxf80000gn/T/tmp.rDMyt6dma3
+$ cd $(mktemp -d)           # /var/folders/wt/s7_0krps1yv31g3ldth3yxf80000gn/T/tmp.54CIhEjm8H
+$ bunx github:biliboss/stem new todo --meta "a list of what I have to buy"
+spawn bunx github:biliboss/stem new todo --meta a list of what I have to buy
+  ð Resolving [1/1] [23D[0K  ð stem [2/2] [18D[0K  ð @agentclientprotocol/sdk [4/7] [38D[0K  ð surrealdb [6/23] [24D[0K  ð cors [7/25] [19D[0K  ð uuidv7 [9/29] [21D[0K  ð object-assign [10/29] [29D[0K  ð express-rate-limit [16/33] [34D[0K  ð zod [19/37] [19D[0K  ð vary [33/66] [20D[0K  ð iconv-lite [39/69] [26D[0K  ð hono [53/80] [20D[0K  ð toidentifier [56/80] [28D[0K  ð es-errors [70/87] [25D[0K  ð content-disposition [72/87] [35D[0K  ð escape-html [86/88] [27D[0K  ð mime-db [89/96] [23D[0K  ð math-intrinsics [96/97] [31D[0K  ð dunder-proto [98/97] [28D[0K  ð tslib [99/99] [21D[0K  ð typescript [100/100] [28D[0K  ð typescript [101/100] [28D[0K  ð typescript [101/100] [28D[0K[2mwarn[0m[2m: [0m[2m[1mincorrect peer dependency "typescript@6.0.3"[0m
+  ð¦ Installing [4/102] [26D[0K  ð¦ Installing [5/102] [26D[0K  ð¦ Installing [7/102] [26D[0K  ð¦ Installing [9/102] [26D[0K  ð¦ Installing [16/102] [27D[0K  ð¦ Installing [18/102] [27D[0K  ð¦ Installing [22/102] [27D[0K  ð¦ Installing [25/102] [27D[0K  ð¦ Installing [28/102] [27D[0K  ð¦ Installing [42/102] [27D[0K  ð¦ Installing [54/102] [27D[0K  ð¦ Installing [60/102] [27D[0K  ð¦ Installing [65/102] [27D[0K  ð¦ Installing [73/102] [27D[0K  ð¦ Installing [85/102] [27D[0K  ð¦ Installing [90/102] [27D[0K  ð¦ Installing [95/102] [27D[0K  ð¦ Installing [99/102] [27D[0K  ð Saving lockfile... [26D[0Kwhich Claude subscription pays the agent? (personal)  personal
+publish on Caddy as todo.localhost? (y/n)  n
+[0m[31mtodo · /private/var/folders/wt/s7_0krps1yv31g3ldth3yxf80000gn/T/tmp.54CIhEjm8H/todo · skill /var/folders/wt/s7_0krps1yv31g3ldth3yxf80000gn/T/tmp.rDMyt6dma3/.claude/skills/todo[0m
+[31merror[0m[2m: [0m[1mCannot find module '@surrealdb/node' from '/private/var/folders/wt/s7_0krps1yv31g3ldth3yxf80000gn/T/tmp.skOHW1O9k1/bunx-501-stem@github@14836857368673513443/node_modules/stem/stem.ts'[0m
+
+### EOF before serve
+EXIT=3
