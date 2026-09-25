@@ -19,6 +19,7 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.4.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@surrealdb/node": "^3.0.3",
     "hono": "^4.13.7",
     "surrealdb": "^2.0.8",
     "zod": "^4.6.1"

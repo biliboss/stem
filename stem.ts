@@ -4277,7 +4277,7 @@ agent. You change it by talking to it through \`${origin(a)}/_mcp\`, not by writ
 
 \`\`\`sh
 cd ${dir}
-bunx @biliboss/stem serve app.ts --new --slug ${a.slug} --tools mcp --account ${a.account}${a.caddy ? "" : " --port 3000"}
+bunx github:biliboss/stem serve app.ts --new --slug ${a.slug} --tools mcp --account ${a.account}${a.caddy ? "" : " --port 3000"}
 claude mcp add --transport http --scope local ${a.slug} ${origin(a)}/_mcp
 \`\`\`
 `);
