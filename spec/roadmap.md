@@ -11,6 +11,10 @@ with proof — command output, a row, a capture — never with "it works".
 ## Done
 
 ```
+stem-astro (#23)                  closed WITHOUT merge 25/09 (owner): the via-v2
+                                  drops Stem; 7.3 (/termos, /privacidade) ported to
+                                  site-v2, 7.4 (legacy galgal links) on the via-v2
+                                  roadmap; branch kept as tag archive/stem-astro (5f122c4)
 _meta, the one declaration        a screen declared once, answered from cache after
 programs (H3, H4)                 repeated SQL runs with no model: 20 ms; first
                                   click deterministic when the designer writes it (19 ms)
